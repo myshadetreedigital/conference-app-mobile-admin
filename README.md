@@ -1,5 +1,7 @@
 # conference-app
 
+**Live:** https://event-mobile-app-admin.vercel.app/
+
 Admin web dashboard for a white-label conference companion platform.
 The rebuild of `conference-app-admin`'s first iteration — see
 [`docs/PRODUCT-DECISIONS.md`](docs/PRODUCT-DECISIONS.md) for what this
