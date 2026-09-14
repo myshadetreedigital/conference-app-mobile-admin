@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { randomUUID } from "node:crypto";
 import type {
   NewOrganization,
   Organization,
@@ -54,17 +55,27 @@ export class SupabaseOrganizationRepository implements OrganizationRepository {
   }
 
   async create(input: NewOrganization): Promise<Organization> {
-    const { data, error } = await this.supabase
-      .from("organizations")
-      .insert({
-        name: input.name,
-        phone: input.phone,
-        email: input.email,
-        address: input.address,
-        created_by: input.createdBy,
-      })
-      .select()
-      .single();
+    // Deliberately not chaining .select() (RETURNING): Postgres
+    // requires a just-inserted row to satisfy the table's SELECT
+    // policy (is_org_admin(id)) for RETURNING to succeed, and that
+    // policy depends on a row the handle_new_organization() AFTER
+    // INSERT trigger creates in the *same* statement — which Postgres
+    // does not reliably see as visible in time for RETURNING's own
+    // check, regardless of function volatility. Confirmed by direct
+    // testing: the bare insert below succeeds and is immediately
+    // visible to a separate, subsequent select; the identical insert
+    // with .select() chained on fails every time. Generating the id
+    // client-side means there's nothing left to fetch back — we
+    // already know every field of the row we just wrote.
+    const id = randomUUID();
+    const { error } = await this.supabase.from("organizations").insert({
+      id,
+      name: input.name,
+      phone: input.phone,
+      email: input.email,
+      address: input.address,
+      created_by: input.createdBy,
+    });
 
     if (error) {
       // 23505 = unique_violation — the "one organization per admin"
@@ -79,6 +90,15 @@ export class SupabaseOrganizationRepository implements OrganizationRepository {
       }
       throw error;
     }
-    return toOrganization(data);
+
+    return {
+      id,
+      name: input.name,
+      phone: input.phone,
+      email: input.email,
+      address: input.address,
+      flaggedDuplicateOf: null,
+      createdBy: input.createdBy,
+    };
   }
 }
