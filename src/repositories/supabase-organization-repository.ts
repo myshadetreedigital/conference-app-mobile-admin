@@ -67,10 +67,14 @@ export class SupabaseOrganizationRepository implements OrganizationRepository {
       .single();
 
     if (error) {
-      // 42501 = insufficient_privilege — the RLS insert policy
-      // rejected this row, which for `organizations` only happens
-      // via the "one organization per admin" check.
-      if (error.code === "42501") {
+      // 23505 = unique_violation — the "one organization per admin"
+      // rule is enforced by admin_memberships_one_per_user, a unique
+      // index on admin_memberships(user_id). The
+      // handle_new_organization() trigger's insert into
+      // admin_memberships fails this constraint when the admin
+      // already has one, rolling back this entire organization
+      // insert with it.
+      if (error.code === "23505") {
         throw new OrganizationCreationRejectedError(error.message);
       }
       throw error;
