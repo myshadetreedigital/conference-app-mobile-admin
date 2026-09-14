@@ -19,10 +19,10 @@ const STATUS_STYLES: Record<string, string> = {
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; message?: string }>;
 }) {
   const user = await requireUser();
-  const { error } = await searchParams;
+  const { error, message } = await searchParams;
 
   const supabase = await createClient();
   const orgRepo = new SupabaseOrganizationRepository(supabase);
@@ -48,6 +48,7 @@ export default async function DashboardPage({
         </form>
       </div>
 
+      {message && <p className="text-sm text-zinc-600">{message}</p>}
       {error && <p className="text-sm text-red-600">{error}</p>}
 
       <ul className="space-y-2">

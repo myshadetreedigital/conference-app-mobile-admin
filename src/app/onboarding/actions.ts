@@ -35,5 +35,13 @@ export async function createOrganizationAction(formData: FormData) {
     redirect(`/onboarding?${qs({ duplicateOfId: result.duplicateOfId })}`);
   }
 
+  if (result.status === "already_has_organization") {
+    // The DB's own RLS policy is the real enforcement here (one org
+    // per admin) — if we land in this branch, this admin's org
+    // already exists, so the dashboard is genuinely where they
+    // belong, not an error state to dwell on.
+    redirect("/?message=You already have an organization set up.");
+  }
+
   redirect("/");
 }

@@ -4,6 +4,7 @@ import type {
   Organization,
   OrganizationRepository,
 } from "./organization-repository";
+import { OrganizationCreationRejectedError } from "./organization-repository";
 
 interface OrganizationRow {
   id: string;
@@ -65,7 +66,15 @@ export class SupabaseOrganizationRepository implements OrganizationRepository {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      // 42501 = insufficient_privilege — the RLS insert policy
+      // rejected this row, which for `organizations` only happens
+      // via the "one organization per admin" check.
+      if (error.code === "42501") {
+        throw new OrganizationCreationRejectedError(error.message);
+      }
+      throw error;
+    }
     return toOrganization(data);
   }
 }

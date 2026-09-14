@@ -1,5 +1,9 @@
 import { z } from "zod";
-import type { Organization, OrganizationRepository } from "@/repositories/organization-repository";
+import {
+  OrganizationCreationRejectedError,
+  type Organization,
+  type OrganizationRepository,
+} from "@/repositories/organization-repository";
 
 export const createOrganizationSchema = z.object({
   name: z.string().trim().min(1, "Name is required"),
@@ -13,7 +17,8 @@ export type CreateOrganizationInput = z.input<typeof createOrganizationSchema>;
 export type CreateOrganizationResult =
   | { status: "created"; organization: Organization }
   | { status: "possible_duplicate"; duplicateOfId: string }
-  | { status: "invalid"; errors: z.ZodFormattedError<CreateOrganizationInput> };
+  | { status: "invalid"; errors: z.ZodFormattedError<CreateOrganizationInput> }
+  | { status: "already_has_organization" };
 
 /**
  * One responsibility per step, per docs/ARCHITECTURE.md's Single
@@ -41,6 +46,13 @@ export async function createOrganization(
     }
   }
 
-  const organization = await repo.create({ ...input, createdBy: userId });
-  return { status: "created", organization };
+  try {
+    const organization = await repo.create({ ...input, createdBy: userId });
+    return { status: "created", organization };
+  } catch (err) {
+    if (err instanceof OrganizationCreationRejectedError) {
+      return { status: "already_has_organization" };
+    }
+    throw err;
+  }
 }

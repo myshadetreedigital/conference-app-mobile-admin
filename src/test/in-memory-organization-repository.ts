@@ -1,8 +1,9 @@
 import { randomUUID } from "node:crypto";
-import type {
-  NewOrganization,
-  Organization,
-  OrganizationRepository,
+import {
+  OrganizationCreationRejectedError,
+  type NewOrganization,
+  type Organization,
+  type OrganizationRepository,
 } from "@/repositories/organization-repository";
 
 /**
@@ -38,6 +39,13 @@ export class InMemoryOrganizationRepository implements OrganizationRepository {
   }
 
   async create(input: NewOrganization): Promise<Organization> {
+    // Mirrors the real "one organization per admin" RLS insert
+    // policy: reject rather than silently allow a second org.
+    if (this.membershipByUserId.has(input.createdBy)) {
+      throw new OrganizationCreationRejectedError(
+        "new row violates row-level security policy for table \"organizations\"",
+      );
+    }
     const org: Organization = { id: randomUUID(), flaggedDuplicateOf: null, ...input };
     this.byId.set(org.id, org);
     this.membershipByUserId.set(input.createdBy, org.id);
