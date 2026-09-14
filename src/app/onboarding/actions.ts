@@ -6,7 +6,22 @@ import { createClient } from "@/lib/supabase/server";
 import { SupabaseOrganizationRepository } from "@/repositories/supabase-organization-repository";
 import { createOrganization } from "@/services/organization-service";
 
-export async function createOrganizationAction(formData: FormData) {
+export type OnboardingState = {
+  error?: string;
+  duplicateOfId?: string;
+};
+
+/**
+ * Bound to useActionState in onboarding-form.tsx. Only the success
+ * path (and the "you already have one, go to the dashboard" path)
+ * redirects — validation errors and the duplicate warning return
+ * state instead, so the form stays mounted and updates in place
+ * rather than round-tripping through a full page navigation.
+ */
+export async function createOrganizationAction(
+  _prevState: OnboardingState,
+  formData: FormData,
+): Promise<OnboardingState> {
   const user = await requireUser();
   const supabase = await createClient();
   const repo = new SupabaseOrganizationRepository(supabase);
@@ -21,25 +36,18 @@ export async function createOrganizationAction(formData: FormData) {
 
   const result = await createOrganization(repo, user.id, input, { confirmDespiteDuplicate });
 
-  const qs = (extra: Record<string, string>) =>
-    new URLSearchParams({ ...input, ...extra }).toString();
-
   if (result.status === "invalid") {
     const firstError = Object.values(result.errors)
       .flatMap((v) => (v && "_errors" in v ? v._errors : []))
       .find(Boolean);
-    redirect(`/onboarding?${qs({ error: firstError ?? "Please check your input." })}`);
+    return { error: firstError ?? "Please check your input." };
   }
 
   if (result.status === "possible_duplicate") {
-    redirect(`/onboarding?${qs({ duplicateOfId: result.duplicateOfId })}`);
+    return { duplicateOfId: result.duplicateOfId };
   }
 
   if (result.status === "already_has_organization") {
-    // The DB's own RLS policy is the real enforcement here (one org
-    // per admin) — if we land in this branch, this admin's org
-    // already exists, so the dashboard is genuinely where they
-    // belong, not an error state to dwell on.
     redirect("/?message=You already have an organization set up.");
   }
 
