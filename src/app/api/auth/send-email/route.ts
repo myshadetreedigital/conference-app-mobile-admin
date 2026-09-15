@@ -21,7 +21,7 @@ import { Webhook } from "standardwebhooks";
 // standardwebhooks library only strips a bare "whsec_" prefix — it
 // has no idea about the leading "v1," version marker, and passing
 // the secret through unmodified throws inside its base64 decoder.
-function normalizeHookSecret(secret: string): string {
+export function normalizeHookSecret(secret: string): string {
   return secret.replace(/^v1,/, "");
 }
 
