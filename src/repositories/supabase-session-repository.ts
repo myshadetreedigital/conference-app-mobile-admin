@@ -46,6 +46,8 @@ export class SupabaseSessionRepository implements SessionRepository {
         title: input.title,
         description: input.description,
         location: input.location,
+        starts_at: input.startsAt,
+        ends_at: input.endsAt,
       })
       .select()
       .single();

@@ -54,11 +54,20 @@ export async function createSessionAction(eventId: string, formData: FormData) {
   await requireUser();
   const supabase = await createClient();
   const repo = new SupabaseSessionRepository(supabase);
-  await createSession(repo, eventId, {
+  const result = await createSession(repo, eventId, {
     title: String(formData.get("title") ?? ""),
     description: String(formData.get("description") ?? ""),
     location: String(formData.get("location") ?? ""),
+    startsAt: String(formData.get("startsAt") ?? ""),
+    endsAt: String(formData.get("endsAt") ?? ""),
   });
+
+  if (result.status === "invalid") {
+    const firstError = Object.values(result.errors)
+      .flatMap((v) => (v && "_errors" in v ? v._errors : []))
+      .find(Boolean);
+    redirect(`/events/${eventId}?error=${encodeURIComponent(firstError ?? "Please check your input.")}`);
+  }
   redirect(`/events/${eventId}`);
 }
 

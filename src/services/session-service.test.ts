@@ -33,6 +33,68 @@ describe("createSession", () => {
   });
 });
 
+describe("createSession date/time", () => {
+  it("accepts a session with no date/time at all", async () => {
+    const repo = new InMemorySessionRepository();
+    const result = await createSession(repo, "event-1", { title: "A", description: "", location: "" });
+    expect(result.status).toBe("created");
+    if (result.status === "created") {
+      expect(result.session.startsAt).toBeNull();
+      expect(result.session.endsAt).toBeNull();
+    }
+  });
+
+  it("normalizes a valid start time to an ISO string", async () => {
+    const repo = new InMemorySessionRepository();
+    const result = await createSession(repo, "event-1", {
+      title: "A",
+      description: "",
+      location: "",
+      startsAt: "2026-09-20T14:30",
+    });
+    expect(result.status).toBe("created");
+    if (result.status === "created") {
+      expect(result.session.startsAt).toBe(new Date("2026-09-20T14:30").toISOString());
+      expect(result.session.endsAt).toBeNull();
+    }
+  });
+
+  it("rejects an unparseable date/time", async () => {
+    const repo = new InMemorySessionRepository();
+    const result = await createSession(repo, "event-1", {
+      title: "A",
+      description: "",
+      location: "",
+      startsAt: "not-a-date",
+    });
+    expect(result.status).toBe("invalid");
+  });
+
+  it("rejects an end time before the start time", async () => {
+    const repo = new InMemorySessionRepository();
+    const result = await createSession(repo, "event-1", {
+      title: "A",
+      description: "",
+      location: "",
+      startsAt: "2026-09-20T14:30",
+      endsAt: "2026-09-20T10:00",
+    });
+    expect(result.status).toBe("invalid");
+  });
+
+  it("accepts an end time after the start time", async () => {
+    const repo = new InMemorySessionRepository();
+    const result = await createSession(repo, "event-1", {
+      title: "A",
+      description: "",
+      location: "",
+      startsAt: "2026-09-20T14:30",
+      endsAt: "2026-09-20T15:30",
+    });
+    expect(result.status).toBe("created");
+  });
+});
+
 describe("deleteSession", () => {
   it("removes the session", async () => {
     const repo = new InMemorySessionRepository();

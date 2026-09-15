@@ -9,7 +9,7 @@ export class InMemorySessionRepository implements SessionRepository {
   }
 
   async create(input: NewSession): Promise<Session> {
-    const session: Session = { id: randomUUID(), startsAt: null, endsAt: null, ...input };
+    const session: Session = { id: randomUUID(), ...input };
     this.byId.set(session.id, session);
     return session;
   }

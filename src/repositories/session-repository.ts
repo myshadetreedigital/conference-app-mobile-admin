@@ -13,6 +13,8 @@ export interface NewSession {
   title: string;
   description: string;
   location: string;
+  startsAt: string | null;
+  endsAt: string | null;
 }
 
 export interface SessionRepository {

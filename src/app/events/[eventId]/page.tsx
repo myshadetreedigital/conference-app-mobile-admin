@@ -18,12 +18,28 @@ import {
 
 const TIERS = ["diamond", "platinum", "gold", "silver", "bronze", "a_la_carte"] as const;
 
+function formatSessionTime(startsAt: string | null, endsAt: string | null): string | null {
+  if (!startsAt) return null;
+  const start = new Date(startsAt);
+  const startText = start.toLocaleString(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+  if (!endsAt) return startText;
+  const end = new Date(endsAt);
+  const endText = end.toLocaleString(undefined, { timeStyle: "short" });
+  return `${startText} – ${endText}`;
+}
+
 export default async function EventContentPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ eventId: string }>;
+  searchParams: Promise<{ error?: string }>;
 }) {
   const { eventId } = await params;
+  const { error } = await searchParams;
   const user = await requireUser();
   const supabase = await createClient();
 
@@ -56,6 +72,8 @@ export default async function EventContentPage({
         <p className="text-sm text-zinc-500">/{event.slug}</p>
       </div>
 
+      {error && <p className="text-sm text-red-600">{error}</p>}
+
       <section className="space-y-3">
         <h2 className="text-lg font-medium">Sessions</h2>
         <ul className="space-y-2">
@@ -64,6 +82,11 @@ export default async function EventContentPage({
             <li key={session.id} className="flex items-center justify-between rounded border px-4 py-3">
               <div>
                 <p className="font-medium">{session.title}</p>
+                {formatSessionTime(session.startsAt, session.endsAt) && (
+                  <p className="text-xs text-zinc-500">
+                    {formatSessionTime(session.startsAt, session.endsAt)}
+                  </p>
+                )}
                 {session.location && <p className="text-xs text-zinc-500">{session.location}</p>}
               </div>
               <form action={deleteSessionAction.bind(null, eventId)}>
@@ -77,6 +100,30 @@ export default async function EventContentPage({
         </ul>
         <form action={createSessionAction.bind(null, eventId)} className="space-y-2 border-t pt-4">
           <input name="title" placeholder="Title" required className="w-full rounded border px-3 py-2" />
+          <div className="flex gap-2">
+            <div className="flex-1 space-y-1">
+              <label htmlFor="startsAt" className="text-xs font-medium text-zinc-500">
+                Starts
+              </label>
+              <input
+                id="startsAt"
+                name="startsAt"
+                type="datetime-local"
+                className="w-full rounded border px-3 py-2"
+              />
+            </div>
+            <div className="flex-1 space-y-1">
+              <label htmlFor="endsAt" className="text-xs font-medium text-zinc-500">
+                Ends
+              </label>
+              <input
+                id="endsAt"
+                name="endsAt"
+                type="datetime-local"
+                className="w-full rounded border px-3 py-2"
+              />
+            </div>
+          </div>
           <input name="location" placeholder="Location (optional)" className="w-full rounded border px-3 py-2" />
           <textarea
             name="description"
