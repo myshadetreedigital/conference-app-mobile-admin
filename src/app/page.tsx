@@ -4,12 +4,7 @@ import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { SupabaseOrganizationRepository } from "@/repositories/supabase-organization-repository";
 import { SupabaseEventRepository } from "@/repositories/supabase-event-repository";
-import {
-  createEventAction,
-  publishEventAction,
-  archiveEventAction,
-  signOut,
-} from "./actions";
+import { createEventAction, publishEventAction, archiveEventAction } from "./actions";
 
 const STATUS_STYLES: Record<string, string> = {
   draft: "bg-zinc-100 text-zinc-700",
@@ -37,16 +32,9 @@ export default async function DashboardPage({
 
   return (
     <div className="mx-auto w-full max-w-2xl flex-1 space-y-8 px-4 py-10">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">{organization.name}</h1>
-          <p className="text-sm text-zinc-600">Events</p>
-        </div>
-        <form action={signOut}>
-          <button type="submit" className="text-sm text-zinc-600 underline">
-            Sign out
-          </button>
-        </form>
+      <div>
+        <h1 className="text-2xl font-semibold">{organization.name}</h1>
+        <p className="text-sm text-zinc-600">Events</p>
       </div>
 
       {message && <p className="text-sm text-zinc-600">{message}</p>}
