@@ -9,7 +9,7 @@ export class InMemorySponsorRepository implements SponsorRepository {
   }
 
   async create(input: NewSponsor): Promise<Sponsor> {
-    const sponsor: Sponsor = { id: randomUUID(), logoUrl: null, websiteUrl: null, ...input };
+    const sponsor: Sponsor = { id: randomUUID(), websiteUrl: null, ...input };
     this.byId.set(sponsor.id, sponsor);
     return sponsor;
   }

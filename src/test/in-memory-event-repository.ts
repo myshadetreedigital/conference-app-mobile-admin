@@ -52,4 +52,10 @@ export class InMemoryEventRepository implements EventRepository {
     if (!event) throw new Error("Event not found");
     event.status = "archived";
   }
+
+  async rename(eventId: string, name: string): Promise<void> {
+    const event = this.byId.get(eventId);
+    if (!event) throw new Error("Event not found");
+    event.name = name;
+  }
 }

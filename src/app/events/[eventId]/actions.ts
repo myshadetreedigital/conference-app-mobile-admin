@@ -3,22 +3,42 @@
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { SupabaseEventRepository } from "@/repositories/supabase-event-repository";
 import { SupabaseSpeakerRepository } from "@/repositories/supabase-speaker-repository";
 import { SupabaseSponsorRepository } from "@/repositories/supabase-sponsor-repository";
 import { SupabaseSessionRepository } from "@/repositories/supabase-session-repository";
+import { renameEvent } from "@/services/event-service";
 import { createSpeaker, deleteSpeaker } from "@/services/speaker-service";
 import { createSponsor, deleteSponsor } from "@/services/sponsor-service";
 import { createSession, deleteSession } from "@/services/session-service";
 import type { SponsorTier } from "@/repositories/sponsor-repository";
+import { uploadEventMedia } from "@/lib/upload-event-media";
+
+export async function renameEventAction(eventId: string, formData: FormData) {
+  await requireUser();
+  const supabase = await createClient();
+  const repo = new SupabaseEventRepository(supabase);
+  const result = await renameEvent(repo, eventId, { name: String(formData.get("name") ?? "") });
+
+  if (result.status === "invalid") {
+    const firstError = Object.values(result.errors)
+      .flatMap((v) => (v && "_errors" in v ? v._errors : []))
+      .find(Boolean);
+    redirect(`/events/${eventId}?error=${encodeURIComponent(firstError ?? "Please check your input.")}`);
+  }
+  redirect(`/events/${eventId}`);
+}
 
 export async function createSpeakerAction(eventId: string, formData: FormData) {
   await requireUser();
   const supabase = await createClient();
   const repo = new SupabaseSpeakerRepository(supabase);
+  const photoUrl = await uploadEventMedia(supabase, formData.get("photo") as File | null, "speakers");
   await createSpeaker(repo, eventId, {
     name: String(formData.get("name") ?? ""),
     title: String(formData.get("title") ?? ""),
     bio: String(formData.get("bio") ?? ""),
+    photoUrl,
   });
   redirect(`/events/${eventId}`);
 }
@@ -35,9 +55,11 @@ export async function createSponsorAction(eventId: string, formData: FormData) {
   await requireUser();
   const supabase = await createClient();
   const repo = new SupabaseSponsorRepository(supabase);
+  const logoUrl = await uploadEventMedia(supabase, formData.get("logo") as File | null, "sponsors");
   await createSponsor(repo, eventId, {
     name: String(formData.get("name") ?? ""),
     tier: String(formData.get("tier") ?? "a_la_carte") as SponsorTier,
+    logoUrl,
   });
   redirect(`/events/${eventId}`);
 }

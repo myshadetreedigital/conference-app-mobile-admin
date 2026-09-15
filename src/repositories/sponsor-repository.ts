@@ -13,6 +13,7 @@ export interface NewSponsor {
   eventId: string;
   name: string;
   tier: SponsorTier;
+  logoUrl: string | null;
 }
 
 export interface SponsorRepository {

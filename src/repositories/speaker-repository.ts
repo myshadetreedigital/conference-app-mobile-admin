@@ -12,6 +12,7 @@ export interface NewSpeaker {
   name: string;
   title: string;
   bio: string;
+  photoUrl: string | null;
 }
 
 export interface SpeakerRepository {

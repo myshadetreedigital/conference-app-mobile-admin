@@ -5,6 +5,16 @@ export const createSpeakerSchema = z.object({
   name: z.string().trim().min(1, "Name is required"),
   title: z.string().trim().default(""),
   bio: z.string().trim().default(""),
+  // Already a Storage public URL by the time it reaches here — the
+  // upload itself is an I/O side effect handled by the action, not
+  // this validation/persistence service (see docs/ARCHITECTURE.md's
+  // Single Responsibility section).
+  photoUrl: z
+    .string()
+    .trim()
+    .nullable()
+    .optional()
+    .transform((v): string | null => (v ? v : null)),
 });
 
 export type CreateSpeakerInput = z.input<typeof createSpeakerSchema>;

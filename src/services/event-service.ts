@@ -68,3 +68,28 @@ export async function publishEvent(
 export async function archiveEvent(repo: EventRepository, eventId: string): Promise<void> {
   await repo.archive(eventId);
 }
+
+export const renameEventSchema = z.object({
+  name: z.string().trim().min(1, "Name is required"),
+});
+
+export type RenameEventInput = z.input<typeof renameEventSchema>;
+
+export type RenameEventResult =
+  | { status: "renamed" }
+  | { status: "invalid"; errors: z.ZodFormattedError<RenameEventInput> };
+
+// The slug deliberately does not change on rename — it's a stable
+// identifier once created, not re-derived from the current name.
+export async function renameEvent(
+  repo: EventRepository,
+  eventId: string,
+  rawInput: RenameEventInput,
+): Promise<RenameEventResult> {
+  const parsed = renameEventSchema.safeParse(rawInput);
+  if (!parsed.success) {
+    return { status: "invalid", errors: parsed.error.format() };
+  }
+  await repo.rename(eventId, parsed.data.name);
+  return { status: "renamed" };
+}

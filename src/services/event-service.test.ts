@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { InMemoryEventRepository } from "@/test/in-memory-event-repository";
-import { createEvent, publishEvent, archiveEvent } from "./event-service";
+import { createEvent, publishEvent, archiveEvent, renameEvent } from "./event-service";
 
 describe("createEvent", () => {
   it("derives the slug from the name", async () => {
@@ -81,5 +81,38 @@ describe("publishEvent / archiveEvent", () => {
     const resultB = await publishEvent(repo, b.event.id);
     expect(resultA.status).toBe("published");
     expect(resultB.status).toBe("published");
+  });
+});
+
+describe("renameEvent", () => {
+  it("updates the event's name", async () => {
+    const repo = new InMemoryEventRepository();
+    const created = await createEvent(repo, "org-1", { name: "Original Name" });
+    if (created.status !== "created") throw new Error("setup failed");
+
+    const result = await renameEvent(repo, created.event.id, { name: "New Name" });
+    expect(result.status).toBe("renamed");
+
+    const events = await repo.listByOrganization("org-1");
+    expect(events[0].name).toBe("New Name");
+  });
+
+  it("does not change the slug", async () => {
+    const repo = new InMemoryEventRepository();
+    const created = await createEvent(repo, "org-1", { name: "Original Name" });
+    if (created.status !== "created") throw new Error("setup failed");
+
+    await renameEvent(repo, created.event.id, { name: "Completely Different Name" });
+    const events = await repo.listByOrganization("org-1");
+    expect(events[0].slug).toBe(created.event.slug);
+  });
+
+  it("rejects an empty name", async () => {
+    const repo = new InMemoryEventRepository();
+    const created = await createEvent(repo, "org-1", { name: "Original Name" });
+    if (created.status !== "created") throw new Error("setup failed");
+
+    const result = await renameEvent(repo, created.event.id, { name: "  " });
+    expect(result.status).toBe("invalid");
   });
 });

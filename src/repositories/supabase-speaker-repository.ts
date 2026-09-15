@@ -40,7 +40,13 @@ export class SupabaseSpeakerRepository implements SpeakerRepository {
   async create(input: NewSpeaker): Promise<Speaker> {
     const { data, error } = await this.supabase
       .from("speakers")
-      .insert({ event_id: input.eventId, name: input.name, title: input.title, bio: input.bio })
+      .insert({
+        event_id: input.eventId,
+        name: input.name,
+        title: input.title,
+        bio: input.bio,
+        photo_url: input.photoUrl,
+      })
       .select()
       .single();
     if (error) throw error;

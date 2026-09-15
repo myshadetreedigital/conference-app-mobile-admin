@@ -88,4 +88,9 @@ export class SupabaseEventRepository implements EventRepository {
       .eq("id", eventId);
     if (error) throw error;
   }
+
+  async rename(eventId: string, name: string): Promise<void> {
+    const { error } = await this.supabase.from("events").update({ name }).eq("id", eventId);
+    if (error) throw error;
+  }
 }

@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
@@ -8,6 +9,7 @@ import { SupabaseSpeakerRepository } from "@/repositories/supabase-speaker-repos
 import { SupabaseSponsorRepository } from "@/repositories/supabase-sponsor-repository";
 import { SupabaseSessionRepository } from "@/repositories/supabase-session-repository";
 import {
+  renameEventAction,
   createSpeakerAction,
   deleteSpeakerAction,
   createSponsorAction,
@@ -68,8 +70,24 @@ export default async function EventContentPage({
         <Link href="/" className="text-sm text-zinc-500 underline">
           ← Back to events
         </Link>
-        <h1 className="mt-1 text-2xl font-semibold">{event.name}</h1>
         <p className="text-sm text-zinc-500">/{event.slug}</p>
+        <form action={renameEventAction.bind(null, eventId)} className="mt-2 flex items-end gap-2">
+          <div className="flex-1 space-y-1">
+            <label htmlFor="event-name" className="text-xs font-medium text-zinc-500">
+              Event name
+            </label>
+            <input
+              id="event-name"
+              name="name"
+              defaultValue={event.name}
+              required
+              className="w-full rounded border px-3 py-2 text-2xl font-semibold"
+            />
+          </div>
+          <button type="submit" className="rounded bg-black px-4 py-2 text-white hover:bg-zinc-800">
+            Save
+          </button>
+        </form>
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
@@ -142,9 +160,20 @@ export default async function EventContentPage({
           {speakers.length === 0 && <li className="text-sm text-zinc-500">No speakers yet.</li>}
           {speakers.map((speaker) => (
             <li key={speaker.id} className="flex items-center justify-between rounded border px-4 py-3">
-              <div>
-                <p className="font-medium">{speaker.name}</p>
-                {speaker.title && <p className="text-xs text-zinc-500">{speaker.title}</p>}
+              <div className="flex items-center gap-3">
+                {speaker.photoUrl && (
+                  <Image
+                    src={speaker.photoUrl}
+                    alt=""
+                    width={40}
+                    height={40}
+                    className="h-10 w-10 rounded-full object-cover"
+                  />
+                )}
+                <div>
+                  <p className="font-medium">{speaker.name}</p>
+                  {speaker.title && <p className="text-xs text-zinc-500">{speaker.title}</p>}
+                </div>
               </div>
               <form action={deleteSpeakerAction.bind(null, eventId)}>
                 <input type="hidden" name="speakerId" value={speaker.id} />
@@ -159,6 +188,12 @@ export default async function EventContentPage({
           <input name="name" placeholder="Name" required className="w-full rounded border px-3 py-2" />
           <input name="title" placeholder="Title (optional)" className="w-full rounded border px-3 py-2" />
           <textarea name="bio" placeholder="Bio (optional)" className="w-full rounded border px-3 py-2" />
+          <div className="space-y-1">
+            <label htmlFor="speaker-photo" className="text-xs font-medium text-zinc-500">
+              Photo (optional)
+            </label>
+            <input id="speaker-photo" name="photo" type="file" accept="image/*" className="block text-sm" />
+          </div>
           <button type="submit" className="rounded bg-black px-4 py-2 text-white hover:bg-zinc-800">
             Add speaker
           </button>
@@ -171,9 +206,20 @@ export default async function EventContentPage({
           {sponsors.length === 0 && <li className="text-sm text-zinc-500">No sponsors yet.</li>}
           {sponsors.map((sponsor) => (
             <li key={sponsor.id} className="flex items-center justify-between rounded border px-4 py-3">
-              <div>
-                <p className="font-medium">{sponsor.name}</p>
-                <p className="text-xs text-zinc-500">{sponsor.tier.replace("_", " ")}</p>
+              <div className="flex items-center gap-3">
+                {sponsor.logoUrl && (
+                  <Image
+                    src={sponsor.logoUrl}
+                    alt=""
+                    width={40}
+                    height={40}
+                    className="h-10 w-10 rounded object-contain"
+                  />
+                )}
+                <div>
+                  <p className="font-medium">{sponsor.name}</p>
+                  <p className="text-xs text-zinc-500">{sponsor.tier.replace("_", " ")}</p>
+                </div>
               </div>
               <form action={deleteSponsorAction.bind(null, eventId)}>
                 <input type="hidden" name="sponsorId" value={sponsor.id} />
@@ -184,15 +230,23 @@ export default async function EventContentPage({
             </li>
           ))}
         </ul>
-        <form action={createSponsorAction.bind(null, eventId)} className="flex items-end gap-2 border-t pt-4">
-          <input name="name" placeholder="Name" required className="flex-1 rounded border px-3 py-2" />
-          <select name="tier" className="rounded border px-3 py-2">
-            {TIERS.map((tier) => (
-              <option key={tier} value={tier}>
-                {tier.replace("_", " ")}
-              </option>
-            ))}
-          </select>
+        <form action={createSponsorAction.bind(null, eventId)} className="space-y-2 border-t pt-4">
+          <div className="flex items-end gap-2">
+            <input name="name" placeholder="Name" required className="flex-1 rounded border px-3 py-2" />
+            <select name="tier" className="rounded border px-3 py-2">
+              {TIERS.map((tier) => (
+                <option key={tier} value={tier}>
+                  {tier.replace("_", " ")}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1">
+            <label htmlFor="sponsor-logo" className="text-xs font-medium text-zinc-500">
+              Logo (optional)
+            </label>
+            <input id="sponsor-logo" name="logo" type="file" accept="image/*" className="block text-sm" />
+          </div>
           <button type="submit" className="rounded bg-black px-4 py-2 text-white hover:bg-zinc-800">
             Add sponsor
           </button>

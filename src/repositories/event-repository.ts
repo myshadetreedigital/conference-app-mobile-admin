@@ -28,4 +28,5 @@ export interface EventRepository {
    *  enforcement; this just performs the write and surfaces its rejection. */
   publish(eventId: string): Promise<void>;
   archive(eventId: string): Promise<void>;
+  rename(eventId: string, name: string): Promise<void>;
 }

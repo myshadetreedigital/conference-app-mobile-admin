@@ -6,6 +6,14 @@ const TIERS = ["diamond", "platinum", "gold", "silver", "bronze", "a_la_carte"] 
 export const createSponsorSchema = z.object({
   name: z.string().trim().min(1, "Name is required"),
   tier: z.enum(TIERS).default("a_la_carte"),
+  // Already a Storage public URL by the time it reaches here — same
+  // reasoning as speaker-service's photoUrl.
+  logoUrl: z
+    .string()
+    .trim()
+    .nullable()
+    .optional()
+    .transform((v): string | null => (v ? v : null)),
 });
 
 export type CreateSponsorInput = z.input<typeof createSponsorSchema>;

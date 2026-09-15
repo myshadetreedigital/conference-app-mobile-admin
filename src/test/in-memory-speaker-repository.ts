@@ -9,7 +9,7 @@ export class InMemorySpeakerRepository implements SpeakerRepository {
   }
 
   async create(input: NewSpeaker): Promise<Speaker> {
-    const speaker: Speaker = { id: randomUUID(), photoUrl: null, ...input };
+    const speaker: Speaker = { id: randomUUID(), ...input };
     this.byId.set(speaker.id, speaker);
     return speaker;
   }

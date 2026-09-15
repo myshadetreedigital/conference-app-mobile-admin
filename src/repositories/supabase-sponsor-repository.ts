@@ -39,7 +39,7 @@ export class SupabaseSponsorRepository implements SponsorRepository {
   async create(input: NewSponsor): Promise<Sponsor> {
     const { data, error } = await this.supabase
       .from("sponsors")
-      .insert({ event_id: input.eventId, name: input.name, tier: input.tier })
+      .insert({ event_id: input.eventId, name: input.name, tier: input.tier, logo_url: input.logoUrl })
       .select()
       .single();
     if (error) throw error;
