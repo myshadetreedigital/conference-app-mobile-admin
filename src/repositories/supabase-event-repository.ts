@@ -40,6 +40,16 @@ export class SupabaseEventRepository implements EventRepository {
     return (data ?? []).map(toEvent);
   }
 
+  async findById(eventId: string): Promise<Event | null> {
+    const { data, error } = await this.supabase
+      .from("events")
+      .select("*")
+      .eq("id", eventId)
+      .maybeSingle();
+    if (error) throw error;
+    return data ? toEvent(data) : null;
+  }
+
   async findBySlug(slug: string): Promise<Event | null> {
     const { data, error } = await this.supabase
       .from("events")

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -70,6 +71,9 @@ export default async function DashboardPage({
               >
                 {event.status}
               </span>
+              <Link href={`/events/${event.id}`} className="text-sm underline">
+                Manage
+              </Link>
               {event.status !== "live" && (
                 <form action={publishEventAction}>
                   <input type="hidden" name="eventId" value={event.id} />

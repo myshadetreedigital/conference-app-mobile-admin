@@ -21,6 +21,7 @@ export interface NewEvent {
 /** Scoped to the events aggregate only — see docs/ARCHITECTURE.md's Layering section. */
 export interface EventRepository {
   listByOrganization(organizationId: string): Promise<Event[]>;
+  findById(eventId: string): Promise<Event | null>;
   findBySlug(slug: string): Promise<Event | null>;
   create(data: NewEvent): Promise<Event>;
   /** Publish is exclusive per org — the DB's partial unique index is the real

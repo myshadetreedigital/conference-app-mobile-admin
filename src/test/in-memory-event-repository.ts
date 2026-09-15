@@ -11,6 +11,10 @@ export class InMemoryEventRepository implements EventRepository {
     return [...this.byId.values()].filter((e) => e.organizationId === organizationId);
   }
 
+  async findById(eventId: string): Promise<Event | null> {
+    return this.byId.get(eventId) ?? null;
+  }
+
   async findBySlug(slug: string): Promise<Event | null> {
     return [...this.byId.values()].find((e) => e.slug === slug) ?? null;
   }
