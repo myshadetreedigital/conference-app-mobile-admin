@@ -1,5 +1,10 @@
 import { randomUUID } from "node:crypto";
-import type { NewSponsor, Sponsor, SponsorRepository } from "@/repositories/sponsor-repository";
+import type {
+  NewSponsor,
+  Sponsor,
+  SponsorRepository,
+  UpdateSponsorData,
+} from "@/repositories/sponsor-repository";
 
 export class InMemorySponsorRepository implements SponsorRepository {
   private readonly byId = new Map<string, Sponsor>();
@@ -12,6 +17,14 @@ export class InMemorySponsorRepository implements SponsorRepository {
     const sponsor: Sponsor = { id: randomUUID(), websiteUrl: null, ...input };
     this.byId.set(sponsor.id, sponsor);
     return sponsor;
+  }
+
+  async update(sponsorId: string, data: UpdateSponsorData): Promise<void> {
+    const sponsor = this.byId.get(sponsorId);
+    if (!sponsor) throw new Error("Sponsor not found");
+    sponsor.name = data.name;
+    sponsor.tier = data.tier;
+    if (data.logoUrl !== undefined) sponsor.logoUrl = data.logoUrl;
   }
 
   async delete(sponsorId: string): Promise<void> {

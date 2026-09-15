@@ -1,5 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { NewSponsor, Sponsor, SponsorRepository, SponsorTier } from "./sponsor-repository";
+import type {
+  NewSponsor,
+  Sponsor,
+  SponsorRepository,
+  SponsorTier,
+  UpdateSponsorData,
+} from "./sponsor-repository";
 
 interface SponsorRow {
   id: string;
@@ -44,6 +50,13 @@ export class SupabaseSponsorRepository implements SponsorRepository {
       .single();
     if (error) throw error;
     return toSponsor(data);
+  }
+
+  async update(sponsorId: string, data: UpdateSponsorData): Promise<void> {
+    const patch: Record<string, unknown> = { name: data.name, tier: data.tier };
+    if (data.logoUrl !== undefined) patch.logo_url = data.logoUrl;
+    const { error } = await this.supabase.from("sponsors").update(patch).eq("id", sponsorId);
+    if (error) throw error;
   }
 
   async delete(sponsorId: string): Promise<void> {

@@ -8,8 +8,8 @@ import { SupabaseSpeakerRepository } from "@/repositories/supabase-speaker-repos
 import { SupabaseSponsorRepository } from "@/repositories/supabase-sponsor-repository";
 import { SupabaseSessionRepository } from "@/repositories/supabase-session-repository";
 import { renameEvent } from "@/services/event-service";
-import { createSpeaker, deleteSpeaker } from "@/services/speaker-service";
-import { createSponsor, deleteSponsor } from "@/services/sponsor-service";
+import { createSpeaker, updateSpeaker, deleteSpeaker } from "@/services/speaker-service";
+import { createSponsor, updateSponsor, deleteSponsor } from "@/services/sponsor-service";
 import { createSession, deleteSession } from "@/services/session-service";
 import type { SponsorTier } from "@/repositories/sponsor-repository";
 import { uploadEventMedia } from "@/lib/upload-event-media";
@@ -43,6 +43,28 @@ export async function createSpeakerAction(eventId: string, formData: FormData) {
   redirect(`/events/${eventId}`);
 }
 
+export async function updateSpeakerAction(eventId: string, formData: FormData) {
+  await requireUser();
+  const supabase = await createClient();
+  const repo = new SupabaseSpeakerRepository(supabase);
+  const speakerId = String(formData.get("speakerId") ?? "");
+  const newPhoto = formData.get("photo") as File | null;
+  const newPhotoUrl = newPhoto && newPhoto.size > 0
+    ? await uploadEventMedia(supabase, newPhoto, "speakers")
+    : undefined;
+  await updateSpeaker(
+    repo,
+    speakerId,
+    {
+      name: String(formData.get("name") ?? ""),
+      title: String(formData.get("title") ?? ""),
+      bio: String(formData.get("bio") ?? ""),
+    },
+    newPhotoUrl,
+  );
+  redirect(`/events/${eventId}`);
+}
+
 export async function deleteSpeakerAction(eventId: string, formData: FormData) {
   await requireUser();
   const supabase = await createClient();
@@ -61,6 +83,27 @@ export async function createSponsorAction(eventId: string, formData: FormData) {
     tier: String(formData.get("tier") ?? "a_la_carte") as SponsorTier,
     logoUrl,
   });
+  redirect(`/events/${eventId}`);
+}
+
+export async function updateSponsorAction(eventId: string, formData: FormData) {
+  await requireUser();
+  const supabase = await createClient();
+  const repo = new SupabaseSponsorRepository(supabase);
+  const sponsorId = String(formData.get("sponsorId") ?? "");
+  const newLogo = formData.get("logo") as File | null;
+  const newLogoUrl = newLogo && newLogo.size > 0
+    ? await uploadEventMedia(supabase, newLogo, "sponsors")
+    : undefined;
+  await updateSponsor(
+    repo,
+    sponsorId,
+    {
+      name: String(formData.get("name") ?? ""),
+      tier: String(formData.get("tier") ?? "a_la_carte") as SponsorTier,
+    },
+    newLogoUrl,
+  );
   redirect(`/events/${eventId}`);
 }
 

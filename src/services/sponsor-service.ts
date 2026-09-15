@@ -35,6 +35,33 @@ export async function createSponsor(
   return { status: "created", sponsor };
 }
 
+export const updateSponsorSchema = z.object({
+  name: z.string().trim().min(1, "Name is required"),
+  tier: z.enum(TIERS).default("a_la_carte"),
+});
+
+export type UpdateSponsorInput = z.input<typeof updateSponsorSchema>;
+
+export type UpdateSponsorResult =
+  | { status: "updated" }
+  | { status: "invalid"; errors: z.ZodFormattedError<UpdateSponsorInput> };
+
+/** newLogoUrl works the same way as updateSpeaker's newPhotoUrl — see
+ *  that function's comment. */
+export async function updateSponsor(
+  repo: SponsorRepository,
+  sponsorId: string,
+  rawInput: UpdateSponsorInput,
+  newLogoUrl?: string | null,
+): Promise<UpdateSponsorResult> {
+  const parsed = updateSponsorSchema.safeParse(rawInput);
+  if (!parsed.success) {
+    return { status: "invalid", errors: parsed.error.format() };
+  }
+  await repo.update(sponsorId, { ...parsed.data, logoUrl: newLogoUrl });
+  return { status: "updated" };
+}
+
 export async function deleteSponsor(repo: SponsorRepository, sponsorId: string): Promise<void> {
   await repo.delete(sponsorId);
 }

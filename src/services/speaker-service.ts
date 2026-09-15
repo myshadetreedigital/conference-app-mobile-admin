@@ -36,6 +36,39 @@ export async function createSpeaker(
   return { status: "created", speaker };
 }
 
+export const updateSpeakerSchema = z.object({
+  name: z.string().trim().min(1, "Name is required"),
+  title: z.string().trim().default(""),
+  bio: z.string().trim().default(""),
+});
+
+export type UpdateSpeakerInput = z.input<typeof updateSpeakerSchema>;
+
+export type UpdateSpeakerResult =
+  | { status: "updated" }
+  | { status: "invalid"; errors: z.ZodFormattedError<UpdateSpeakerInput> };
+
+/**
+ * newPhotoUrl is a separate parameter, not part of the validated
+ * form fields — it's only set by the action when a new file was
+ * actually uploaded, matching the same "I/O side effect handled by
+ * the action" reasoning as create's photoUrl. Leaving it undefined
+ * keeps the existing photo untouched.
+ */
+export async function updateSpeaker(
+  repo: SpeakerRepository,
+  speakerId: string,
+  rawInput: UpdateSpeakerInput,
+  newPhotoUrl?: string | null,
+): Promise<UpdateSpeakerResult> {
+  const parsed = updateSpeakerSchema.safeParse(rawInput);
+  if (!parsed.success) {
+    return { status: "invalid", errors: parsed.error.format() };
+  }
+  await repo.update(speakerId, { ...parsed.data, photoUrl: newPhotoUrl });
+  return { status: "updated" };
+}
+
 export async function deleteSpeaker(repo: SpeakerRepository, speakerId: string): Promise<void> {
   await repo.delete(speakerId);
 }

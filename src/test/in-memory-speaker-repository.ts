@@ -1,5 +1,10 @@
 import { randomUUID } from "node:crypto";
-import type { NewSpeaker, Speaker, SpeakerRepository } from "@/repositories/speaker-repository";
+import type {
+  NewSpeaker,
+  Speaker,
+  SpeakerRepository,
+  UpdateSpeakerData,
+} from "@/repositories/speaker-repository";
 
 export class InMemorySpeakerRepository implements SpeakerRepository {
   private readonly byId = new Map<string, Speaker>();
@@ -12,6 +17,15 @@ export class InMemorySpeakerRepository implements SpeakerRepository {
     const speaker: Speaker = { id: randomUUID(), ...input };
     this.byId.set(speaker.id, speaker);
     return speaker;
+  }
+
+  async update(speakerId: string, data: UpdateSpeakerData): Promise<void> {
+    const speaker = this.byId.get(speakerId);
+    if (!speaker) throw new Error("Speaker not found");
+    speaker.name = data.name;
+    speaker.title = data.title;
+    speaker.bio = data.bio;
+    if (data.photoUrl !== undefined) speaker.photoUrl = data.photoUrl;
   }
 
   async delete(speakerId: string): Promise<void> {

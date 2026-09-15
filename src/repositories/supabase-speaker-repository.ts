@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { NewSpeaker, Speaker, SpeakerRepository } from "./speaker-repository";
+import type { NewSpeaker, Speaker, SpeakerRepository, UpdateSpeakerData } from "./speaker-repository";
 
 interface SpeakerRow {
   id: string;
@@ -51,6 +51,13 @@ export class SupabaseSpeakerRepository implements SpeakerRepository {
       .single();
     if (error) throw error;
     return toSpeaker(data);
+  }
+
+  async update(speakerId: string, data: UpdateSpeakerData): Promise<void> {
+    const patch: Record<string, unknown> = { name: data.name, title: data.title, bio: data.bio };
+    if (data.photoUrl !== undefined) patch.photo_url = data.photoUrl;
+    const { error } = await this.supabase.from("speakers").update(patch).eq("id", speakerId);
+    if (error) throw error;
   }
 
   async delete(speakerId: string): Promise<void> {
