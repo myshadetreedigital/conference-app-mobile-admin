@@ -17,6 +17,14 @@ import { Webhook } from "standardwebhooks";
  * contract is visible immediately rather than silently swallowed.
  */
 
+// Supabase prefixes its hook secret as "v1,whsec_...", but the
+// standardwebhooks library only strips a bare "whsec_" prefix — it
+// has no idea about the leading "v1," version marker, and passing
+// the secret through unmodified throws inside its base64 decoder.
+function normalizeHookSecret(secret: string): string {
+  return secret.replace(/^v1,/, "");
+}
+
 interface SendEmailPayload {
   user: { email: string };
   email_data: {
@@ -32,7 +40,7 @@ export async function POST(request: Request) {
 
   let event: SendEmailPayload;
   try {
-    const wh = new Webhook(process.env.SUPABASE_AUTH_HOOK_SECRET ?? "");
+    const wh = new Webhook(normalizeHookSecret(process.env.SUPABASE_AUTH_HOOK_SECRET ?? ""));
     event = wh.verify(body, headers) as SendEmailPayload;
   } catch (error) {
     console.error("[send-email hook] signature verification failed:", error, "raw body:", body);
