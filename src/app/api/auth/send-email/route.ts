@@ -43,7 +43,10 @@ export async function POST(request: Request) {
     const wh = new Webhook(normalizeHookSecret(process.env.SUPABASE_AUTH_HOOK_SECRET ?? ""));
     event = wh.verify(body, headers) as SendEmailPayload;
   } catch (error) {
-    console.error("[send-email hook] signature verification failed:", error, "raw body:", body);
+    // Deliberately omits the raw body from this log: on a real
+    // (not just malformed-test) request it contains a user's
+    // plaintext reset code and email address.
+    console.error("[send-email hook] signature verification failed:", error, "headers:", headers);
     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   }
 
@@ -51,9 +54,18 @@ export async function POST(request: Request) {
 
   try {
     if (email_data.email_action_type === "recovery") {
+      // No fallback here on purpose: Resend's shared onboarding@resend.dev
+      // domain only delivers to the account owner's own address, so
+      // falling back to it would silently drop every real user's email
+      // while Supabase has already told them one was sent.
+      const fromEmail = process.env.RESEND_FROM_EMAIL;
+      if (!fromEmail) {
+        throw new Error("RESEND_FROM_EMAIL is not configured");
+      }
+
       const resend = new Resend(process.env.RESEND_API_KEY);
       await resend.emails.send({
-        from: process.env.RESEND_FROM_EMAIL ?? "onboarding@resend.dev",
+        from: fromEmail,
         to: user.email,
         subject: "Reset your password",
         html: `
