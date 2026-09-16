@@ -10,6 +10,7 @@ Full-codebase review of the admin app (`main` branch, not a diff review). Covere
 - **Exploit scenario**: Any authenticated admin — of any organization, not just the one that owns the file — can enumerate, delete, or overwrite another org's speaker photos and sponsor logos.
 - **Fix**: Namespace upload paths by event id (`<eventId>/speakers/...`, `<eventId>/sponsors/...`) and scope the insert/delete storage policies to `is_event_admin()` (already used elsewhere in the schema) against that leading path segment.
 - **Status**: ✅ Fixed — `supabase/migrations/0010_scope_media_storage_to_event_admins.sql`
+- **Known side effect, not a bug**: files uploaded before this fix live at the old flat path (`speakers/<uuid>-<filename>`, no event prefix) and don't match the new `is_event_admin()` path check. They'll keep displaying fine (read access is still public) but become undeletable/unreplaceable through the app. Only matters for real (non-test) media uploaded prior to `9473ab8` — re-upload if one of those needs to change.
 
 ### 2. MEDIUM — No upload file-type/size limits
 - **File**: `src/lib/upload-event-media.ts`, `supabase/migrations/0008_media_storage.sql`
