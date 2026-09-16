@@ -56,3 +56,33 @@ export async function createOrganization(
     throw err;
   }
 }
+
+export const updateOrganizationSchema = z.object({
+  name: z.string().trim().min(1, "Name is required"),
+  phone: z.string().trim().min(1, "Phone is required"),
+  email: z.string().trim().min(1, "Email is required").email("Must be a valid email"),
+  address: z.string().trim().default(""),
+});
+
+export type UpdateOrganizationInput = z.input<typeof updateOrganizationSchema>;
+
+export type UpdateOrganizationResult =
+  | { status: "updated" }
+  | { status: "invalid"; errors: z.ZodFormattedError<UpdateOrganizationInput> };
+
+// No duplicate-detection here on purpose: that check exists to keep
+// two admins from unknowingly onboarding the same organization
+// twice, which doesn't apply when an existing admin is editing their
+// own org's details.
+export async function updateOrganization(
+  repo: OrganizationRepository,
+  organizationId: string,
+  rawInput: UpdateOrganizationInput,
+): Promise<UpdateOrganizationResult> {
+  const parsed = updateOrganizationSchema.safeParse(rawInput);
+  if (!parsed.success) {
+    return { status: "invalid", errors: parsed.error.format() };
+  }
+  await repo.update(organizationId, parsed.data);
+  return { status: "updated" };
+}

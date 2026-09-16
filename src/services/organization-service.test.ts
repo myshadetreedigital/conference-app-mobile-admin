@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { InMemoryOrganizationRepository } from "@/test/in-memory-organization-repository";
-import { createOrganization } from "./organization-service";
+import { createOrganization, updateOrganization } from "./organization-service";
 
 describe("createOrganization", () => {
   it("creates an organization when input is valid and no duplicate exists", async () => {
@@ -108,5 +108,54 @@ describe("createOrganization", () => {
     );
 
     expect(result.status).toBe("created");
+  });
+});
+
+describe("updateOrganization", () => {
+  it("updates the organization's fields when input is valid", async () => {
+    const repo = new InMemoryOrganizationRepository();
+    const created = await createOrganization(repo, "user-1", {
+      name: "Opticon",
+      phone: "555-0100",
+      email: "hello@opticon.example",
+      address: "",
+    });
+    if (created.status !== "created") throw new Error("setup failed");
+
+    const result = await updateOrganization(repo, created.organization.id, {
+      name: "Opticon Renamed",
+      phone: "555-0199",
+      email: "new@opticon.example",
+      address: "123 Main St",
+    });
+
+    expect(result.status).toBe("updated");
+    const updated = await repo.findByAdminUserId("user-1");
+    expect(updated?.name).toBe("Opticon Renamed");
+    expect(updated?.phone).toBe("555-0199");
+    expect(updated?.email).toBe("new@opticon.example");
+    expect(updated?.address).toBe("123 Main St");
+  });
+
+  it("rejects invalid input before touching the repository", async () => {
+    const repo = new InMemoryOrganizationRepository();
+    const created = await createOrganization(repo, "user-1", {
+      name: "Opticon",
+      phone: "555-0100",
+      email: "hello@opticon.example",
+      address: "",
+    });
+    if (created.status !== "created") throw new Error("setup failed");
+
+    const result = await updateOrganization(repo, created.organization.id, {
+      name: "",
+      phone: "555-0199",
+      email: "not-an-email",
+      address: "",
+    });
+
+    expect(result.status).toBe("invalid");
+    const unchanged = await repo.findByAdminUserId("user-1");
+    expect(unchanged?.name).toBe("Opticon");
   });
 });

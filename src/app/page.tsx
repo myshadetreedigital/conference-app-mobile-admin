@@ -4,7 +4,7 @@ import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { SupabaseOrganizationRepository } from "@/repositories/supabase-organization-repository";
 import { SupabaseEventRepository } from "@/repositories/supabase-event-repository";
-import { createEventAction, publishEventAction, archiveEventAction } from "./actions";
+import { createEventAction, publishEventAction, archiveEventAction, updateOrganizationAction } from "./actions";
 
 const STATUS_STYLES: Record<string, string> = {
   draft: "bg-zinc-100 text-zinc-700",
@@ -35,6 +35,64 @@ export default async function DashboardPage({
       <div>
         <h1 className="text-2xl font-semibold">{organization.name}</h1>
         <p className="text-sm text-zinc-600">Events</p>
+        <details className="mt-2">
+          <summary className="cursor-pointer text-sm text-zinc-500 underline">
+            Edit organization
+          </summary>
+          <form action={updateOrganizationAction} className="mt-3 space-y-3 rounded border p-4">
+            <div className="space-y-1">
+              <label htmlFor="org-name" className="text-xs font-medium text-zinc-500">
+                Name
+              </label>
+              <input
+                id="org-name"
+                name="name"
+                defaultValue={organization.name}
+                required
+                className="w-full rounded border px-3 py-2"
+              />
+            </div>
+            <div className="space-y-1">
+              <label htmlFor="org-phone" className="text-xs font-medium text-zinc-500">
+                Phone
+              </label>
+              <input
+                id="org-phone"
+                name="phone"
+                defaultValue={organization.phone}
+                required
+                className="w-full rounded border px-3 py-2"
+              />
+            </div>
+            <div className="space-y-1">
+              <label htmlFor="org-email" className="text-xs font-medium text-zinc-500">
+                Email
+              </label>
+              <input
+                id="org-email"
+                name="email"
+                type="email"
+                defaultValue={organization.email}
+                required
+                className="w-full rounded border px-3 py-2"
+              />
+            </div>
+            <div className="space-y-1">
+              <label htmlFor="org-address" className="text-xs font-medium text-zinc-500">
+                Address
+              </label>
+              <input
+                id="org-address"
+                name="address"
+                defaultValue={organization.address}
+                className="w-full rounded border px-3 py-2"
+              />
+            </div>
+            <button type="submit" className="rounded bg-black px-4 py-2 text-white hover:bg-zinc-800">
+              Save
+            </button>
+          </form>
+        </details>
       </div>
 
       {message && <p className="text-sm text-zinc-600">{message}</p>}

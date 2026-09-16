@@ -4,6 +4,7 @@ import {
   type NewOrganization,
   type Organization,
   type OrganizationRepository,
+  type UpdateOrganizationData,
 } from "@/repositories/organization-repository";
 
 /**
@@ -50,5 +51,11 @@ export class InMemoryOrganizationRepository implements OrganizationRepository {
     this.byId.set(org.id, org);
     this.membershipByUserId.set(input.createdBy, org.id);
     return org;
+  }
+
+  async update(organizationId: string, data: UpdateOrganizationData): Promise<void> {
+    const org = this.byId.get(organizationId);
+    if (!org) throw new Error(`Organization not found: ${organizationId}`);
+    this.byId.set(organizationId, { ...org, ...data });
   }
 }

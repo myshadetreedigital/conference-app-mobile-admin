@@ -16,6 +16,13 @@ export interface NewOrganization {
   createdBy: string;
 }
 
+export interface UpdateOrganizationData {
+  name: string;
+  phone: string;
+  email: string;
+  address: string;
+}
+
 /**
  * Thrown by `create()` when the database's own RLS insert policy
  * rejects the row — currently only possible via the "one
@@ -37,4 +44,5 @@ export interface OrganizationRepository {
   /** Wraps the `find_possible_duplicate_org` security-definer function. */
   findPossibleDuplicate(name: string, phone: string, email: string): Promise<string | null>;
   create(data: NewOrganization): Promise<Organization>;
+  update(organizationId: string, data: UpdateOrganizationData): Promise<void>;
 }

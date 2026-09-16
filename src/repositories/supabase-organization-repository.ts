@@ -4,6 +4,7 @@ import type {
   NewOrganization,
   Organization,
   OrganizationRepository,
+  UpdateOrganizationData,
 } from "./organization-repository";
 import { OrganizationCreationRejectedError } from "./organization-repository";
 
@@ -100,5 +101,13 @@ export class SupabaseOrganizationRepository implements OrganizationRepository {
       flaggedDuplicateOf: null,
       createdBy: input.createdBy,
     };
+  }
+
+  async update(organizationId: string, data: UpdateOrganizationData): Promise<void> {
+    const { error } = await this.supabase
+      .from("organizations")
+      .update({ name: data.name, phone: data.phone, email: data.email, address: data.address })
+      .eq("id", organizationId);
+    if (error) throw error;
   }
 }
