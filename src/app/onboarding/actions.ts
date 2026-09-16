@@ -36,8 +36,6 @@ export async function createOrganizationAction(
 
   const result = await createOrganization(repo, user.id, input, { confirmDespiteDuplicate });
 
-  console.log("[onboarding] user.id =", user.id, "input =", input, "result =", result);
-
   if (result.status === "invalid") {
     const firstError = Object.values(result.errors)
       .flatMap((v) => (v && "_errors" in v ? v._errors : []))

@@ -33,7 +33,12 @@ export async function createSpeakerAction(eventId: string, formData: FormData) {
   await requireUser();
   const supabase = await createClient();
   const repo = new SupabaseSpeakerRepository(supabase);
-  const photoUrl = await uploadEventMedia(supabase, formData.get("photo") as File | null, "speakers");
+  const photoUrl = await uploadEventMedia(
+    supabase,
+    eventId,
+    formData.get("photo") as File | null,
+    "speakers",
+  );
   await createSpeaker(repo, eventId, {
     name: String(formData.get("name") ?? ""),
     title: String(formData.get("title") ?? ""),
@@ -50,7 +55,7 @@ export async function updateSpeakerAction(eventId: string, formData: FormData) {
   const speakerId = String(formData.get("speakerId") ?? "");
   const newPhoto = formData.get("photo") as File | null;
   const newPhotoUrl = newPhoto && newPhoto.size > 0
-    ? await uploadEventMedia(supabase, newPhoto, "speakers")
+    ? await uploadEventMedia(supabase, eventId, newPhoto, "speakers")
     : undefined;
   await updateSpeaker(
     repo,
@@ -77,7 +82,12 @@ export async function createSponsorAction(eventId: string, formData: FormData) {
   await requireUser();
   const supabase = await createClient();
   const repo = new SupabaseSponsorRepository(supabase);
-  const logoUrl = await uploadEventMedia(supabase, formData.get("logo") as File | null, "sponsors");
+  const logoUrl = await uploadEventMedia(
+    supabase,
+    eventId,
+    formData.get("logo") as File | null,
+    "sponsors",
+  );
   await createSponsor(repo, eventId, {
     name: String(formData.get("name") ?? ""),
     tier: String(formData.get("tier") ?? "a_la_carte") as SponsorTier,
@@ -93,7 +103,7 @@ export async function updateSponsorAction(eventId: string, formData: FormData) {
   const sponsorId = String(formData.get("sponsorId") ?? "");
   const newLogo = formData.get("logo") as File | null;
   const newLogoUrl = newLogo && newLogo.size > 0
-    ? await uploadEventMedia(supabase, newLogo, "sponsors")
+    ? await uploadEventMedia(supabase, eventId, newLogo, "sponsors")
     : undefined;
   await updateSponsor(
     repo,
