@@ -5,6 +5,7 @@ export interface Speaker {
   title: string;
   bio: string;
   photoUrl: string | null;
+  featured: boolean;
 }
 
 export interface NewSpeaker {
@@ -13,12 +14,14 @@ export interface NewSpeaker {
   title: string;
   bio: string;
   photoUrl: string | null;
+  featured: boolean;
 }
 
 export interface UpdateSpeakerData {
   name: string;
   title: string;
   bio: string;
+  featured: boolean;
   /** Omit to leave the existing photo unchanged — only set this when
    *  a new file was actually uploaded (or explicitly to null to clear it). */
   photoUrl?: string | null;

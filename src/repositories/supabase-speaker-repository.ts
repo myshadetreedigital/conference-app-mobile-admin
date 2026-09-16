@@ -8,6 +8,7 @@ interface SpeakerRow {
   title: string;
   bio: string;
   photo_url: string | null;
+  featured: boolean;
 }
 
 function toSpeaker(row: SpeakerRow): Speaker {
@@ -18,6 +19,7 @@ function toSpeaker(row: SpeakerRow): Speaker {
     title: row.title,
     bio: row.bio,
     photoUrl: row.photo_url,
+    featured: row.featured,
   };
 }
 
@@ -46,6 +48,7 @@ export class SupabaseSpeakerRepository implements SpeakerRepository {
         title: input.title,
         bio: input.bio,
         photo_url: input.photoUrl,
+        featured: input.featured,
       })
       .select()
       .single();
@@ -54,7 +57,12 @@ export class SupabaseSpeakerRepository implements SpeakerRepository {
   }
 
   async update(speakerId: string, data: UpdateSpeakerData): Promise<void> {
-    const patch: Record<string, unknown> = { name: data.name, title: data.title, bio: data.bio };
+    const patch: Record<string, unknown> = {
+      name: data.name,
+      title: data.title,
+      bio: data.bio,
+      featured: data.featured,
+    };
     if (data.photoUrl !== undefined) patch.photo_url = data.photoUrl;
     const { error } = await this.supabase.from("speakers").update(patch).eq("id", speakerId);
     if (error) throw error;

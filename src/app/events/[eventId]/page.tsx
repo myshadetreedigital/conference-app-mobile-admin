@@ -174,7 +174,14 @@ export default async function EventContentPage({
                     />
                   )}
                   <div>
-                    <p className="font-medium">{speaker.name}</p>
+                    <p className="font-medium">
+                      {speaker.name}
+                      {speaker.featured && (
+                        <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                          Featured
+                        </span>
+                      )}
+                    </p>
                     {speaker.title && <p className="text-xs text-zinc-500">{speaker.title}</p>}
                   </div>
                 </div>
@@ -204,6 +211,14 @@ export default async function EventContentPage({
                         placeholder="Bio (optional)"
                         className="w-full rounded border px-3 py-2"
                       />
+                      <label className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          name="featured"
+                          defaultChecked={speaker.featured}
+                        />
+                        Featured
+                      </label>
                       <div className="space-y-1">
                         <label className="text-xs font-medium text-zinc-500">
                           Replace photo (optional)
@@ -233,6 +248,10 @@ export default async function EventContentPage({
           <input name="name" placeholder="Name" required className="w-full rounded border px-3 py-2" />
           <input name="title" placeholder="Title (optional)" className="w-full rounded border px-3 py-2" />
           <textarea name="bio" placeholder="Bio (optional)" className="w-full rounded border px-3 py-2" />
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="featured" />
+            Featured
+          </label>
           <div className="space-y-1">
             <label htmlFor="speaker-photo" className="text-xs font-medium text-zinc-500">
               Photo (optional)

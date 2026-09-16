@@ -14,6 +14,21 @@ describe("createSpeaker", () => {
     if (result.status === "created") {
       expect(result.speaker.eventId).toBe("event-1");
       expect(result.speaker.name).toBe("Ada Lovelace");
+      expect(result.speaker.featured).toBe(false);
+    }
+  });
+
+  it("creates a featured speaker when requested", async () => {
+    const repo = new InMemorySpeakerRepository();
+    const result = await createSpeaker(repo, "event-1", {
+      name: "Ada Lovelace",
+      title: "",
+      bio: "",
+      featured: true,
+    });
+    expect(result.status).toBe("created");
+    if (result.status === "created") {
+      expect(result.speaker.featured).toBe(true);
     }
   });
 
@@ -50,6 +65,28 @@ describe("updateSpeaker", () => {
     expect(speaker.name).toBe("A Updated");
     expect(speaker.title).toBe("New Title");
     expect(speaker.bio).toBe("New bio");
+  });
+
+  it("toggles featured on and off", async () => {
+    const repo = new InMemorySpeakerRepository();
+    const created = await createSpeaker(repo, "event-1", { name: "A", title: "", bio: "" });
+    if (created.status !== "created") throw new Error("setup failed");
+
+    await updateSpeaker(repo, created.speaker.id, {
+      name: "A",
+      title: "",
+      bio: "",
+      featured: true,
+    });
+    expect((await repo.listByEvent("event-1"))[0].featured).toBe(true);
+
+    await updateSpeaker(repo, created.speaker.id, {
+      name: "A",
+      title: "",
+      bio: "",
+      featured: false,
+    });
+    expect((await repo.listByEvent("event-1"))[0].featured).toBe(false);
   });
 
   it("leaves the photo unchanged when no new photo is given", async () => {

@@ -43,6 +43,7 @@ export async function createSpeakerAction(eventId: string, formData: FormData) {
     name: String(formData.get("name") ?? ""),
     title: String(formData.get("title") ?? ""),
     bio: String(formData.get("bio") ?? ""),
+    featured: formData.get("featured") === "on",
     photoUrl,
   });
   redirect(`/events/${eventId}`);
@@ -64,6 +65,7 @@ export async function updateSpeakerAction(eventId: string, formData: FormData) {
       name: String(formData.get("name") ?? ""),
       title: String(formData.get("title") ?? ""),
       bio: String(formData.get("bio") ?? ""),
+      featured: formData.get("featured") === "on",
     },
     newPhotoUrl,
   );

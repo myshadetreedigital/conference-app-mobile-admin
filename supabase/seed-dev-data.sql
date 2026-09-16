@@ -49,3 +49,14 @@ cross join (values
   ('Morgan Diaz', '', '555-0199', 'Speaker for the afternoon track.')
 ) as c(name, email, phone, notes)
 where e.id = (select id from public.events order by created_at desc limit 1);
+
+-- Same, for the mobile app's test login (tr2962@gmail.com).
+insert into public.personal_contacts (owner_id, event_id, name, email, phone, notes)
+select u.id, e.id, c.name, c.email, c.phone, c.notes
+from public.events e
+cross join (select id from auth.users where email = 'tr2962@gmail.com') as u
+cross join (values
+  ('Casey Rivera', 'casey@example.com', '555-0177', 'Sat next to me during the opening keynote.'),
+  ('Jamie Chen', '', '555-0188', 'Runs a dev tools startup, wants to demo at next year''s event.')
+) as c(name, email, phone, notes)
+where e.id = (select id from public.events order by created_at desc limit 1);

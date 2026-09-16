@@ -5,6 +5,7 @@ export const createSpeakerSchema = z.object({
   name: z.string().trim().min(1, "Name is required"),
   title: z.string().trim().default(""),
   bio: z.string().trim().default(""),
+  featured: z.boolean().default(false),
   // Already a Storage public URL by the time it reaches here — the
   // upload itself is an I/O side effect handled by the action, not
   // this validation/persistence service (see docs/ARCHITECTURE.md's
@@ -40,6 +41,7 @@ export const updateSpeakerSchema = z.object({
   name: z.string().trim().min(1, "Name is required"),
   title: z.string().trim().default(""),
   bio: z.string().trim().default(""),
+  featured: z.boolean().default(false),
 });
 
 export type UpdateSpeakerInput = z.input<typeof updateSpeakerSchema>;

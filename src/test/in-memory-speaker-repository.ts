@@ -25,6 +25,7 @@ export class InMemorySpeakerRepository implements SpeakerRepository {
     speaker.name = data.name;
     speaker.title = data.title;
     speaker.bio = data.bio;
+    speaker.featured = data.featured;
     if (data.photoUrl !== undefined) speaker.photoUrl = data.photoUrl;
   }
 
