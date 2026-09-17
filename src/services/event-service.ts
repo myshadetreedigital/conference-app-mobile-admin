@@ -93,3 +93,44 @@ export async function renameEvent(
   await repo.rename(eventId, parsed.data.name);
   return { status: "renamed" };
 }
+
+const dateSchema = z
+  .string()
+  .trim()
+  .nullable()
+  .optional()
+  .transform((v): string | null => (v ? v : null));
+
+export const updateEventDetailsSchema = z.object({
+  tagline: z.string().trim().default(""),
+  description: z.string().trim().default(""),
+  location: z.string().trim().default(""),
+  startsAt: dateSchema,
+  endsAt: dateSchema,
+});
+
+export type UpdateEventDetailsInput = z.input<typeof updateEventDetailsSchema>;
+
+export type UpdateEventDetailsResult =
+  | { status: "updated" }
+  | { status: "invalid"; errors: z.ZodFormattedError<UpdateEventDetailsInput> };
+
+/**
+ * newLogoUrl is a separate parameter, not part of the validated form
+ * fields — only set by the action when a new file was actually
+ * uploaded, matching updateSpeaker's newPhotoUrl. Leaving it undefined
+ * keeps the existing logo untouched.
+ */
+export async function updateEventDetails(
+  repo: EventRepository,
+  eventId: string,
+  rawInput: UpdateEventDetailsInput,
+  newLogoUrl?: string | null,
+): Promise<UpdateEventDetailsResult> {
+  const parsed = updateEventDetailsSchema.safeParse(rawInput);
+  if (!parsed.success) {
+    return { status: "invalid", errors: parsed.error.format() };
+  }
+  await repo.updateDetails(eventId, { ...parsed.data, logoUrl: newLogoUrl });
+  return { status: "updated" };
+}

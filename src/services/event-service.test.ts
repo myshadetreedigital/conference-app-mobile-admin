@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { InMemoryEventRepository } from "@/test/in-memory-event-repository";
-import { createEvent, publishEvent, archiveEvent, renameEvent } from "./event-service";
+import { createEvent, publishEvent, archiveEvent, renameEvent, updateEventDetails } from "./event-service";
 
 describe("createEvent", () => {
   it("derives the slug from the name", async () => {
@@ -114,5 +114,67 @@ describe("renameEvent", () => {
 
     const result = await renameEvent(repo, created.event.id, { name: "  " });
     expect(result.status).toBe("invalid");
+  });
+});
+
+describe("updateEventDetails", () => {
+  it("updates tagline, description, location, and dates", async () => {
+    const repo = new InMemoryEventRepository();
+    const created = await createEvent(repo, "org-1", { name: "2026 Conference" });
+    if (created.status !== "created") throw new Error("setup failed");
+
+    const result = await updateEventDetails(repo, created.event.id, {
+      tagline: "Three days of talks",
+      description: "A conference about developer tools.",
+      location: "Javits Center, New York",
+      startsAt: "2026-10-15",
+      endsAt: "2026-10-17",
+    });
+    expect(result.status).toBe("updated");
+
+    const [event] = await repo.listByOrganization("org-1");
+    expect(event.tagline).toBe("Three days of talks");
+    expect(event.location).toBe("Javits Center, New York");
+    expect(event.startsAt).toBe("2026-10-15");
+    expect(event.endsAt).toBe("2026-10-17");
+  });
+
+  it("leaves the logo unchanged when no new logo is given", async () => {
+    const repo = new InMemoryEventRepository();
+    const created = await createEvent(repo, "org-1", { name: "2026 Conference" });
+    if (created.status !== "created") throw new Error("setup failed");
+
+    await updateEventDetails(
+      repo,
+      created.event.id,
+      { tagline: "", description: "", location: "", startsAt: null, endsAt: null },
+      "https://example.com/original.png",
+    );
+    await updateEventDetails(repo, created.event.id, {
+      tagline: "Updated",
+      description: "",
+      location: "",
+      startsAt: null,
+      endsAt: null,
+    });
+
+    const [event] = await repo.listByOrganization("org-1");
+    expect(event.logoUrl).toBe("https://example.com/original.png");
+  });
+
+  it("replaces the logo when a new one is given", async () => {
+    const repo = new InMemoryEventRepository();
+    const created = await createEvent(repo, "org-1", { name: "2026 Conference" });
+    if (created.status !== "created") throw new Error("setup failed");
+
+    await updateEventDetails(
+      repo,
+      created.event.id,
+      { tagline: "", description: "", location: "", startsAt: null, endsAt: null },
+      "https://example.com/new.png",
+    );
+
+    const [event] = await repo.listByOrganization("org-1");
+    expect(event.logoUrl).toBe("https://example.com/new.png");
   });
 });

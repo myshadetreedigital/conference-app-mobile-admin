@@ -1,5 +1,10 @@
 import { randomUUID } from "node:crypto";
-import type { Event, EventRepository, NewEvent } from "@/repositories/event-repository";
+import type {
+  Event,
+  EventRepository,
+  NewEvent,
+  UpdateEventDetailsData,
+} from "@/repositories/event-repository";
 
 /** Test double for EventRepository. `publish` mirrors the real
  *  events_one_live_per_org partial unique index by throwing if
@@ -30,6 +35,11 @@ export class InMemoryEventRepository implements EventRepository {
       primaryColor: null,
       backgroundColor: null,
       textColor: null,
+      tagline: "",
+      description: "",
+      location: "",
+      startsAt: null,
+      endsAt: null,
     };
     this.byId.set(event.id, event);
     return event;
@@ -57,5 +67,16 @@ export class InMemoryEventRepository implements EventRepository {
     const event = this.byId.get(eventId);
     if (!event) throw new Error("Event not found");
     event.name = name;
+  }
+
+  async updateDetails(eventId: string, data: UpdateEventDetailsData): Promise<void> {
+    const event = this.byId.get(eventId);
+    if (!event) throw new Error("Event not found");
+    event.tagline = data.tagline;
+    event.description = data.description;
+    event.location = data.location;
+    event.startsAt = data.startsAt;
+    event.endsAt = data.endsAt;
+    if (data.logoUrl !== undefined) event.logoUrl = data.logoUrl;
   }
 }

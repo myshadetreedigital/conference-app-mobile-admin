@@ -1,5 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Event, EventRepository, EventStatus, NewEvent } from "./event-repository";
+import type {
+  Event,
+  EventRepository,
+  EventStatus,
+  NewEvent,
+  UpdateEventDetailsData,
+} from "./event-repository";
 
 interface EventRow {
   id: string;
@@ -11,6 +17,11 @@ interface EventRow {
   primary_color: string | null;
   background_color: string | null;
   text_color: string | null;
+  tagline: string;
+  description: string;
+  location: string;
+  starts_at: string | null;
+  ends_at: string | null;
 }
 
 function toEvent(row: EventRow): Event {
@@ -24,6 +35,11 @@ function toEvent(row: EventRow): Event {
     primaryColor: row.primary_color,
     backgroundColor: row.background_color,
     textColor: row.text_color,
+    tagline: row.tagline,
+    description: row.description,
+    location: row.location,
+    startsAt: row.starts_at,
+    endsAt: row.ends_at,
   };
 }
 
@@ -91,6 +107,19 @@ export class SupabaseEventRepository implements EventRepository {
 
   async rename(eventId: string, name: string): Promise<void> {
     const { error } = await this.supabase.from("events").update({ name }).eq("id", eventId);
+    if (error) throw error;
+  }
+
+  async updateDetails(eventId: string, data: UpdateEventDetailsData): Promise<void> {
+    const patch: Record<string, unknown> = {
+      tagline: data.tagline,
+      description: data.description,
+      location: data.location,
+      starts_at: data.startsAt,
+      ends_at: data.endsAt,
+    };
+    if (data.logoUrl !== undefined) patch.logo_url = data.logoUrl;
+    const { error } = await this.supabase.from("events").update(patch).eq("id", eventId);
     if (error) throw error;
   }
 }

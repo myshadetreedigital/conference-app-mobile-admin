@@ -58,7 +58,8 @@ and (
   (s.title = 'Opening Keynote' and sp.name = 'Jordan Lee')
   or (s.title = 'Scaling Without Losing Your Mind' and sp.name in ('Priya Nair', 'Sam Ortiz'))
   or (s.title = 'Panel: The Future of DevTools' and sp.name in ('Jordan Lee', 'Priya Nair', 'Sam Ortiz'))
-);
+)
+on conflict (session_id, speaker_id) do nothing;
 
 -- Personal contacts — owned by a specific user, looked up by email
 -- (auth.uid() returns null in the SQL editor's own connection, since
@@ -83,4 +84,21 @@ cross join (values
   ('Casey Rivera', 'casey@example.com', '555-0177', 'Sat next to me during the opening keynote.'),
   ('Jamie Chen', '', '555-0188', 'Runs a dev tools startup, wants to demo at next year''s event.')
 ) as c(name, email, phone, notes)
+where e.id = (select id from public.events order by created_at desc limit 1);
+
+-- "My Event" content sections (mobile app's My Event tab).
+insert into public.event_info_sections (event_id, icon, title, body)
+select e.id, s.icon, s.title, s.body
+from public.events e
+cross join (values
+  ('tree-pine', 'About', 'Three days of talks, workshops, and hallway conversation for people building developer tools.'),
+  ('info', 'Before you arrive', 'Bring a laptop and a jacket — the main hall runs cold. Badge pickup opens at 8am on day one.'),
+  ('plane', 'Getting here', 'Fly into JFK or LaGuardia. The venue is a 20 minute cab ride from either airport.'),
+  ('users', 'Once you arrive', 'Badge pickup is in the main lobby. Sessions are first-come, first-seated — arrive a few minutes early for popular talks.'),
+  ('heart', 'Emergency info', 'For any on-site emergency, find a staff member in a gold lanyard or go to the info desk in the main lobby.'),
+  ('building', 'Hotel info', 'The Marriott Marquis (block rate available) is a 5 minute walk. Mention the event name when booking.'),
+  ('clipboard-list', 'Registration overview/hours', 'Registration is open 8am–6pm each day at the main entrance.'),
+  ('map', 'Floor Plans', 'Main Hall is on the ground floor. Breakout rooms and the sponsor expo are one level up.'),
+  ('map-pin', 'Location', 'North Javits Convention Center, New York, NY.')
+) as s(icon, title, body)
 where e.id = (select id from public.events order by created_at desc limit 1);

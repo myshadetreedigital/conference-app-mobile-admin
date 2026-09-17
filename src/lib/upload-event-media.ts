@@ -22,7 +22,7 @@ export async function uploadEventMedia(
   supabase: SupabaseClient,
   eventId: string,
   file: File | null,
-  folder: "speakers" | "sponsors",
+  folder: "speakers" | "sponsors" | "events",
 ): Promise<string | null> {
   if (!file || file.size === 0) return null;
 
