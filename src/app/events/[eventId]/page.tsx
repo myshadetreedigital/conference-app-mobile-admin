@@ -29,6 +29,7 @@ import {
 const TIERS = ["diamond", "platinum", "gold", "silver", "bronze", "a_la_carte"] as const;
 
 const TABS = [
+  { key: "details", label: "Event details" },
   { key: "sessions", label: "Sessions" },
   { key: "speakers", label: "Speakers" },
   { key: "sponsors", label: "Sponsors" },
@@ -68,7 +69,7 @@ export default async function EventContentPage({
 }) {
   const { eventId } = await params;
   const { error, tab: rawTab } = await searchParams;
-  const activeTab: TabKey = TABS.some((t) => t.key === rawTab) ? (rawTab as TabKey) : "sessions";
+  const activeTab: TabKey = TABS.some((t) => t.key === rawTab) ? (rawTab as TabKey) : "details";
   const user = await requireUser();
   const supabase = await createClient();
 
@@ -121,110 +122,6 @@ export default async function EventContentPage({
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
-      <section className="space-y-3 rounded border p-4">
-        <h2 className="text-lg font-medium">Event details</h2>
-        <p className="text-sm text-zinc-500">
-          Shown to attendees in the mobile app — logo, dates, location, and a short description of
-          the event.
-        </p>
-        <div className="flex items-start gap-4">
-          {event.logoUrl && (
-            <Image
-              src={event.logoUrl}
-              alt=""
-              width={80}
-              height={80}
-              className="h-20 w-20 rounded object-contain"
-            />
-          )}
-          <form
-            action={updateEventDetailsAction.bind(null, eventId)}
-            className="flex-1 space-y-3"
-          >
-            <div className="space-y-1">
-              <label htmlFor="event-logo" className="text-xs font-medium text-zinc-500">
-                {event.logoUrl ? "Replace logo/image" : "Logo/image (optional)"}
-              </label>
-              <input id="event-logo" name="logo" type="file" accept="image/*" className="block text-sm" />
-            </div>
-            <div className="space-y-1">
-              <label htmlFor="event-tagline" className="text-xs font-medium text-zinc-500">
-                Tagline
-              </label>
-              <input
-                id="event-tagline"
-                name="tagline"
-                defaultValue={event.tagline}
-                placeholder="A short line under the event name"
-                className="w-full rounded border px-3 py-2"
-              />
-            </div>
-            <div className="flex gap-2">
-              <div className="flex-1 space-y-1">
-                <label htmlFor="event-starts" className="text-xs font-medium text-zinc-500">
-                  Starts
-                </label>
-                <input
-                  id="event-starts"
-                  name="startsAt"
-                  type="date"
-                  defaultValue={event.startsAt ?? ""}
-                  className="w-full rounded border px-3 py-2"
-                />
-              </div>
-              <div className="flex-1 space-y-1">
-                <label htmlFor="event-ends" className="text-xs font-medium text-zinc-500">
-                  Ends
-                </label>
-                <input
-                  id="event-ends"
-                  name="endsAt"
-                  type="date"
-                  defaultValue={event.endsAt ?? ""}
-                  className="w-full rounded border px-3 py-2"
-                />
-              </div>
-            </div>
-            <div className="space-y-1">
-              <label htmlFor="event-location" className="text-xs font-medium text-zinc-500">
-                Location / address
-              </label>
-              <input
-                id="event-location"
-                name="location"
-                defaultValue={event.location}
-                placeholder="Venue name, city"
-                className="w-full rounded border px-3 py-2"
-              />
-            </div>
-            <div className="space-y-1">
-              <label htmlFor="event-description" className="text-xs font-medium text-zinc-500">
-                About this event (short excerpt)
-              </label>
-              <textarea
-                id="event-description"
-                name="description"
-                defaultValue={event.description}
-                placeholder="A few sentences describing the event"
-                className="w-full rounded border px-3 py-2"
-              />
-            </div>
-            <button type="submit" className="rounded bg-black px-4 py-2 text-white hover:bg-zinc-800">
-              Save details
-            </button>
-          </form>
-        </div>
-        {(event.tagline || event.location || formatEventDates(event.startsAt, event.endsAt)) && (
-          <div className="border-t pt-3 text-sm text-zinc-500">
-            {event.tagline && <p>{event.tagline}</p>}
-            {formatEventDates(event.startsAt, event.endsAt) && (
-              <p>{formatEventDates(event.startsAt, event.endsAt)}</p>
-            )}
-            {event.location && <p>{event.location}</p>}
-          </div>
-        )}
-      </section>
-
       <div className="flex gap-8">
         <nav className="w-48 shrink-0 space-y-1">
           {TABS.map((t) => (
@@ -241,6 +138,112 @@ export default async function EventContentPage({
         </nav>
 
         <div className="flex-1 space-y-3">
+          {activeTab === "details" && (
+            <section className="space-y-3">
+              <h2 className="text-lg font-medium">Event details</h2>
+              <p className="text-sm text-zinc-500">
+                Shown to attendees in the mobile app — logo, dates, location, and a short
+                description of the event.
+              </p>
+              <div className="flex items-start gap-4">
+                {event.logoUrl && (
+                  <Image
+                    src={event.logoUrl}
+                    alt=""
+                    width={80}
+                    height={80}
+                    className="h-20 w-20 rounded object-contain"
+                  />
+                )}
+                <form
+                  action={updateEventDetailsAction.bind(null, eventId)}
+                  className="flex-1 space-y-3"
+                >
+                  <div className="space-y-1">
+                    <label htmlFor="event-logo" className="text-xs font-medium text-zinc-500">
+                      {event.logoUrl ? "Replace logo/image" : "Logo/image (optional)"}
+                    </label>
+                    <input id="event-logo" name="logo" type="file" accept="image/*" className="block text-sm" />
+                  </div>
+                  <div className="space-y-1">
+                    <label htmlFor="event-tagline" className="text-xs font-medium text-zinc-500">
+                      Tagline
+                    </label>
+                    <input
+                      id="event-tagline"
+                      name="tagline"
+                      defaultValue={event.tagline}
+                      placeholder="A short line under the event name"
+                      className="w-full rounded border px-3 py-2"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <div className="flex-1 space-y-1">
+                      <label htmlFor="event-starts" className="text-xs font-medium text-zinc-500">
+                        Starts
+                      </label>
+                      <input
+                        id="event-starts"
+                        name="startsAt"
+                        type="date"
+                        defaultValue={event.startsAt ?? ""}
+                        className="w-full rounded border px-3 py-2"
+                      />
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <label htmlFor="event-ends" className="text-xs font-medium text-zinc-500">
+                        Ends
+                      </label>
+                      <input
+                        id="event-ends"
+                        name="endsAt"
+                        type="date"
+                        defaultValue={event.endsAt ?? ""}
+                        className="w-full rounded border px-3 py-2"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <label htmlFor="event-location" className="text-xs font-medium text-zinc-500">
+                      Location / address
+                    </label>
+                    <input
+                      id="event-location"
+                      name="location"
+                      defaultValue={event.location}
+                      placeholder="Venue name, city"
+                      className="w-full rounded border px-3 py-2"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label htmlFor="event-description" className="text-xs font-medium text-zinc-500">
+                      About this event (short excerpt)
+                    </label>
+                    <textarea
+                      id="event-description"
+                      name="description"
+                      defaultValue={event.description}
+                      placeholder="A few sentences describing the event"
+                      className="w-full rounded border px-3 py-2"
+                    />
+                  </div>
+                  <button type="submit" className="rounded bg-black px-4 py-2 text-white hover:bg-zinc-800">
+                    Save details
+                  </button>
+                </form>
+              </div>
+              {(event.tagline || event.location || formatEventDates(event.startsAt, event.endsAt)) && (
+                <div className="border-t pt-3 text-sm text-zinc-500">
+                  {event.tagline && <p>{event.tagline}</p>}
+                  {formatEventDates(event.startsAt, event.endsAt) && (
+                    <p>{formatEventDates(event.startsAt, event.endsAt)}</p>
+                  )}
+                  {event.location && <p>{event.location}</p>}
+                </div>
+              )}
+            </section>
+          )}
+
           {activeTab === "sessions" && (
             <section className="space-y-3">
               <h2 className="text-lg font-medium">Sessions</h2>

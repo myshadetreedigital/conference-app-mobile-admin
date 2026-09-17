@@ -56,7 +56,7 @@ export async function updateEventDetailsAction(eventId: string, formData: FormDa
     },
     newLogoUrl,
   );
-  redirect(`/events/${eventId}`);
+  redirect(`/events/${eventId}?tab=details`);
 }
 
 export async function createSpeakerAction(eventId: string, formData: FormData) {
