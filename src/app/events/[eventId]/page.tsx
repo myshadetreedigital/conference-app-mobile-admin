@@ -166,6 +166,24 @@ export default async function EventContentPage({
                     <input id="event-logo" name="logo" type="file" accept="image/*" className="block text-sm" />
                   </div>
                   <div className="space-y-1">
+                    <label htmlFor="event-primary-color" className="text-xs font-medium text-zinc-500">
+                      Accent color
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        id="event-primary-color"
+                        name="primaryColor"
+                        type="color"
+                        defaultValue={event.primaryColor ?? "#ac9245"}
+                        className="h-9 w-14 rounded border p-1"
+                      />
+                      <p className="text-xs text-zinc-500">
+                        The one brand color used throughout the mobile app (tab bar, buttons,
+                        highlights). Defaults to the house gold if never changed.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
                     <label htmlFor="event-tagline" className="text-xs font-medium text-zinc-500">
                       Tagline
                     </label>

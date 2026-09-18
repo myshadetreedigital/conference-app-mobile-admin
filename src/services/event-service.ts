@@ -108,6 +108,18 @@ const linkSchema = z
   .optional()
   .transform((v): string | null => (v ? v : null));
 
+// The mobile app's one org-customizable accent color — see its
+// AccentProvider, which falls back to the house default when this is null.
+const colorSchema = z
+  .string()
+  .trim()
+  .nullable()
+  .optional()
+  .transform((v): string | null => (v ? v : null))
+  .refine((v) => v === null || /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(v), {
+    message: "Enter a hex color like #AC9245",
+  });
+
 export const updateEventDetailsSchema = z.object({
   tagline: z.string().trim().default(""),
   description: z.string().trim().default(""),
@@ -116,6 +128,7 @@ export const updateEventDetailsSchema = z.object({
   endsAt: dateSchema,
   banner1LinkUrl: linkSchema,
   banner2LinkUrl: linkSchema,
+  primaryColor: colorSchema,
 });
 
 export type UpdateEventDetailsInput = z.input<typeof updateEventDetailsSchema>;

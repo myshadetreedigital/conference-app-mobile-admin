@@ -232,4 +232,43 @@ describe("updateEventDetails", () => {
     const [event] = await repo.listByOrganization("org-1");
     expect(event.banner1ImageUrl).toBe("https://example.com/banner1.png");
   });
+
+  it("sets the accent color when given a valid hex", async () => {
+    const repo = new InMemoryEventRepository();
+    const created = await createEvent(repo, "org-1", { name: "2026 Conference" });
+    if (created.status !== "created") throw new Error("setup failed");
+
+    const result = await updateEventDetails(repo, created.event.id, {
+      tagline: "",
+      description: "",
+      location: "",
+      startsAt: null,
+      endsAt: null,
+      banner1LinkUrl: null,
+      banner2LinkUrl: null,
+      primaryColor: "#123ABC",
+    });
+    expect(result.status).toBe("updated");
+
+    const [event] = await repo.listByOrganization("org-1");
+    expect(event.primaryColor).toBe("#123ABC");
+  });
+
+  it("rejects an invalid accent color", async () => {
+    const repo = new InMemoryEventRepository();
+    const created = await createEvent(repo, "org-1", { name: "2026 Conference" });
+    if (created.status !== "created") throw new Error("setup failed");
+
+    const result = await updateEventDetails(repo, created.event.id, {
+      tagline: "",
+      description: "",
+      location: "",
+      startsAt: null,
+      endsAt: null,
+      banner1LinkUrl: null,
+      banner2LinkUrl: null,
+      primaryColor: "not-a-color",
+    });
+    expect(result.status).toBe("invalid");
+  });
 });

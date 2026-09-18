@@ -63,6 +63,7 @@ export async function updateEventDetailsAction(eventId: string, formData: FormDa
       endsAt: String(formData.get("endsAt") ?? "") || null,
       banner1LinkUrl: String(formData.get("banner1Link") ?? "") || null,
       banner2LinkUrl: String(formData.get("banner2Link") ?? "") || null,
+      primaryColor: String(formData.get("primaryColor") ?? "") || null,
     },
     newLogoUrl,
     newBanner1Url,

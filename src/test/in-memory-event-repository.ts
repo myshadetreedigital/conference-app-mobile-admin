@@ -83,6 +83,7 @@ export class InMemoryEventRepository implements EventRepository {
     event.endsAt = data.endsAt;
     event.banner1LinkUrl = data.banner1LinkUrl;
     event.banner2LinkUrl = data.banner2LinkUrl;
+    event.primaryColor = data.primaryColor;
     if (data.logoUrl !== undefined) event.logoUrl = data.logoUrl;
     if (data.banner1ImageUrl !== undefined) event.banner1ImageUrl = data.banner1ImageUrl;
     if (data.banner2ImageUrl !== undefined) event.banner2ImageUrl = data.banner2ImageUrl;

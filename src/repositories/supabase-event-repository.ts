@@ -127,6 +127,7 @@ export class SupabaseEventRepository implements EventRepository {
       ends_at: data.endsAt,
       banner_1_link_url: data.banner1LinkUrl,
       banner_2_link_url: data.banner2LinkUrl,
+      primary_color: data.primaryColor,
     };
     if (data.logoUrl !== undefined) patch.logo_url = data.logoUrl;
     if (data.banner1ImageUrl !== undefined) patch.banner_1_image_url = data.banner1ImageUrl;

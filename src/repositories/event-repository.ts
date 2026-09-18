@@ -35,6 +35,9 @@ export interface UpdateEventDetailsData {
   endsAt: string | null;
   banner1LinkUrl: string | null;
   banner2LinkUrl: string | null;
+  /** The one org-customizable accent color — see the mobile app's
+   *  AccentProvider. Null means "use the house default". */
+  primaryColor: string | null;
   /** Omit any of these to leave that existing image unchanged — only
    *  set when a new file was actually uploaded (or explicitly to null
    *  to clear it). */
