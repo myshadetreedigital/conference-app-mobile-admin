@@ -177,4 +177,59 @@ describe("updateEventDetails", () => {
     const [event] = await repo.listByOrganization("org-1");
     expect(event.logoUrl).toBe("https://example.com/new.png");
   });
+
+  it("sets banner images and links", async () => {
+    const repo = new InMemoryEventRepository();
+    const created = await createEvent(repo, "org-1", { name: "2026 Conference" });
+    if (created.status !== "created") throw new Error("setup failed");
+
+    await updateEventDetails(
+      repo,
+      created.event.id,
+      {
+        tagline: "",
+        description: "",
+        location: "",
+        startsAt: null,
+        endsAt: null,
+        banner1LinkUrl: "https://example.com/one",
+        banner2LinkUrl: "https://example.com/two",
+      },
+      undefined,
+      "https://example.com/banner1.png",
+      "https://example.com/banner2.png",
+    );
+
+    const [event] = await repo.listByOrganization("org-1");
+    expect(event.banner1ImageUrl).toBe("https://example.com/banner1.png");
+    expect(event.banner1LinkUrl).toBe("https://example.com/one");
+    expect(event.banner2ImageUrl).toBe("https://example.com/banner2.png");
+    expect(event.banner2LinkUrl).toBe("https://example.com/two");
+  });
+
+  it("leaves banner images unchanged when no new ones are given", async () => {
+    const repo = new InMemoryEventRepository();
+    const created = await createEvent(repo, "org-1", { name: "2026 Conference" });
+    if (created.status !== "created") throw new Error("setup failed");
+
+    await updateEventDetails(
+      repo,
+      created.event.id,
+      { tagline: "", description: "", location: "", startsAt: null, endsAt: null, banner1LinkUrl: null, banner2LinkUrl: null },
+      undefined,
+      "https://example.com/banner1.png",
+    );
+    await updateEventDetails(repo, created.event.id, {
+      tagline: "Updated",
+      description: "",
+      location: "",
+      startsAt: null,
+      endsAt: null,
+      banner1LinkUrl: null,
+      banner2LinkUrl: null,
+    });
+
+    const [event] = await repo.listByOrganization("org-1");
+    expect(event.banner1ImageUrl).toBe("https://example.com/banner1.png");
+  });
 });

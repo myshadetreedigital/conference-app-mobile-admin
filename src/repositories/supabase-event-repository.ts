@@ -22,6 +22,10 @@ interface EventRow {
   location: string;
   starts_at: string | null;
   ends_at: string | null;
+  banner_1_image_url: string | null;
+  banner_1_link_url: string | null;
+  banner_2_image_url: string | null;
+  banner_2_link_url: string | null;
 }
 
 function toEvent(row: EventRow): Event {
@@ -40,6 +44,10 @@ function toEvent(row: EventRow): Event {
     location: row.location,
     startsAt: row.starts_at,
     endsAt: row.ends_at,
+    banner1ImageUrl: row.banner_1_image_url,
+    banner1LinkUrl: row.banner_1_link_url,
+    banner2ImageUrl: row.banner_2_image_url,
+    banner2LinkUrl: row.banner_2_link_url,
   };
 }
 
@@ -117,8 +125,12 @@ export class SupabaseEventRepository implements EventRepository {
       location: data.location,
       starts_at: data.startsAt,
       ends_at: data.endsAt,
+      banner_1_link_url: data.banner1LinkUrl,
+      banner_2_link_url: data.banner2LinkUrl,
     };
     if (data.logoUrl !== undefined) patch.logo_url = data.logoUrl;
+    if (data.banner1ImageUrl !== undefined) patch.banner_1_image_url = data.banner1ImageUrl;
+    if (data.banner2ImageUrl !== undefined) patch.banner_2_image_url = data.banner2ImageUrl;
     const { error } = await this.supabase.from("events").update(patch).eq("id", eventId);
     if (error) throw error;
   }

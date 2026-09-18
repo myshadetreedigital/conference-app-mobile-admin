@@ -44,6 +44,14 @@ export async function updateEventDetailsAction(eventId: string, formData: FormDa
   const newLogoUrl = newLogo && newLogo.size > 0
     ? await uploadEventMedia(supabase, eventId, newLogo, "events")
     : undefined;
+  const newBanner1 = formData.get("banner1Image") as File | null;
+  const newBanner1Url = newBanner1 && newBanner1.size > 0
+    ? await uploadEventMedia(supabase, eventId, newBanner1, "events")
+    : undefined;
+  const newBanner2 = formData.get("banner2Image") as File | null;
+  const newBanner2Url = newBanner2 && newBanner2.size > 0
+    ? await uploadEventMedia(supabase, eventId, newBanner2, "events")
+    : undefined;
   await updateEventDetails(
     repo,
     eventId,
@@ -53,8 +61,12 @@ export async function updateEventDetailsAction(eventId: string, formData: FormDa
       location: String(formData.get("location") ?? ""),
       startsAt: String(formData.get("startsAt") ?? "") || null,
       endsAt: String(formData.get("endsAt") ?? "") || null,
+      banner1LinkUrl: String(formData.get("banner1Link") ?? "") || null,
+      banner2LinkUrl: String(formData.get("banner2Link") ?? "") || null,
     },
     newLogoUrl,
+    newBanner1Url,
+    newBanner2Url,
   );
   redirect(`/events/${eventId}?tab=details`);
 }

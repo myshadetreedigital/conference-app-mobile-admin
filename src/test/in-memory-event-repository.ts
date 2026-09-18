@@ -40,6 +40,10 @@ export class InMemoryEventRepository implements EventRepository {
       location: "",
       startsAt: null,
       endsAt: null,
+      banner1ImageUrl: null,
+      banner1LinkUrl: null,
+      banner2ImageUrl: null,
+      banner2LinkUrl: null,
     };
     this.byId.set(event.id, event);
     return event;
@@ -77,6 +81,10 @@ export class InMemoryEventRepository implements EventRepository {
     event.location = data.location;
     event.startsAt = data.startsAt;
     event.endsAt = data.endsAt;
+    event.banner1LinkUrl = data.banner1LinkUrl;
+    event.banner2LinkUrl = data.banner2LinkUrl;
     if (data.logoUrl !== undefined) event.logoUrl = data.logoUrl;
+    if (data.banner1ImageUrl !== undefined) event.banner1ImageUrl = data.banner1ImageUrl;
+    if (data.banner2ImageUrl !== undefined) event.banner2ImageUrl = data.banner2ImageUrl;
   }
 }

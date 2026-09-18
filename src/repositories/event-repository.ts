@@ -15,6 +15,10 @@ export interface Event {
   location: string;
   startsAt: string | null;
   endsAt: string | null;
+  banner1ImageUrl: string | null;
+  banner1LinkUrl: string | null;
+  banner2ImageUrl: string | null;
+  banner2LinkUrl: string | null;
 }
 
 export interface NewEvent {
@@ -29,9 +33,14 @@ export interface UpdateEventDetailsData {
   location: string;
   startsAt: string | null;
   endsAt: string | null;
-  /** Omit to leave the existing logo unchanged — only set this when a
-   *  new file was actually uploaded (or explicitly to null to clear it). */
+  banner1LinkUrl: string | null;
+  banner2LinkUrl: string | null;
+  /** Omit any of these to leave that existing image unchanged — only
+   *  set when a new file was actually uploaded (or explicitly to null
+   *  to clear it). */
   logoUrl?: string | null;
+  banner1ImageUrl?: string | null;
+  banner2ImageUrl?: string | null;
 }
 
 /** Scoped to the events aggregate only — see docs/ARCHITECTURE.md's Layering section. */

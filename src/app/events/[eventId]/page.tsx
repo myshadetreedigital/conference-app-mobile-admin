@@ -227,6 +227,51 @@ export default async function EventContentPage({
                       className="w-full rounded border px-3 py-2"
                     />
                   </div>
+
+                  <div className="space-y-2 border-t pt-3">
+                    <p className="text-xs font-medium text-zinc-500">
+                      Home screen banner (2 slides, shown above the mobile app&apos;s menu)
+                    </p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        {event.banner1ImageUrl && (
+                          <Image
+                            src={event.banner1ImageUrl}
+                            alt=""
+                            width={320}
+                            height={80}
+                            className="h-20 w-full rounded border object-cover"
+                          />
+                        )}
+                        <input name="banner1Image" type="file" accept="image/*" className="block text-sm" />
+                        <input
+                          name="banner1Link"
+                          defaultValue={event.banner1LinkUrl ?? ""}
+                          placeholder="Link (optional)"
+                          className="w-full rounded border px-3 py-2 text-sm"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        {event.banner2ImageUrl && (
+                          <Image
+                            src={event.banner2ImageUrl}
+                            alt=""
+                            width={320}
+                            height={80}
+                            className="h-20 w-full rounded border object-cover"
+                          />
+                        )}
+                        <input name="banner2Image" type="file" accept="image/*" className="block text-sm" />
+                        <input
+                          name="banner2Link"
+                          defaultValue={event.banner2LinkUrl ?? ""}
+                          placeholder="Link (optional)"
+                          className="w-full rounded border px-3 py-2 text-sm"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
                   <button type="submit" className="rounded bg-black px-4 py-2 text-white hover:bg-zinc-800">
                     Save details
                   </button>
