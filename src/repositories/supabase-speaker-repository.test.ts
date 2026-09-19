@@ -16,7 +16,7 @@ const row = {
   ...NO_LINK_COLUMNS,
   website_url: "example.com",
   instagram: "@ada",
-  skool: "analytical-engine",
+  linkedin: "https://www.linkedin.com/in/ada",
 };
 
 const noLinks = Object.fromEntries(SPEAKER_LINK_FIELDS.map((f) => [f.key, null])) as SpeakerLinks;
@@ -32,7 +32,7 @@ const expectedSpeaker = {
   ...noLinks,
   websiteUrl: "example.com",
   instagram: "@ada",
-  skool: "analytical-engine",
+  linkedin: "https://www.linkedin.com/in/ada",
 };
 
 describe("SupabaseSpeakerRepository.listByEvent", () => {
@@ -59,7 +59,7 @@ describe("SupabaseSpeakerRepository.listByEvent", () => {
     const [speaker] = await new SupabaseSpeakerRepository(fake.client).listByEvent("evt-1");
     expect(speaker.websiteUrl).toBeNull();
     expect(speaker.instagram).toBeNull();
-    expect(speaker.skool).toBe("analytical-engine");
+    expect(speaker.linkedin).toBe("https://www.linkedin.com/in/ada");
   });
 
   it("returns an empty list when there is no data", async () => {

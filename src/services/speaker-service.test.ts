@@ -138,58 +138,78 @@ describe("updateSpeaker", () => {
 });
 
 describe("speaker links", () => {
+  const base = { name: "A", title: "", bio: "" };
+
   it("defaults every link to null when none are given", async () => {
     const repo = new InMemorySpeakerRepository();
-    const result = await createSpeaker(repo, "event-1", { name: "A", title: "", bio: "" });
+    const result = await createSpeaker(repo, "event-1", base);
     if (result.status !== "created") throw new Error("setup failed");
     for (const { key } of SPEAKER_LINK_FIELDS) {
       expect(result.speaker[key]).toBeNull();
     }
   });
 
-  it("stores trimmed links and turns blank ones into null", async () => {
+  it("stores canonical https links and turns blanks into null", async () => {
     const repo = new InMemorySpeakerRepository();
     const result = await createSpeaker(repo, "event-1", {
-      name: "A",
-      title: "",
-      bio: "",
+      ...base,
       websiteUrl: "  example.com ",
-      instagram: "@jane",
+      instagram: "@Jane",
+      linkedin: "https://uk.linkedin.com/in/Jane-Doe/?trk=x",
       youtube: "   ",
-      skool: "",
+      twitch: "",
     });
     if (result.status !== "created") throw new Error("setup failed");
-    expect(result.speaker.websiteUrl).toBe("example.com");
-    expect(result.speaker.instagram).toBe("@jane");
+    expect(result.speaker.websiteUrl).toBe("https://example.com/");
+    expect(result.speaker.instagram).toBe("https://www.instagram.com/jane");
+    expect(result.speaker.linkedin).toBe("https://www.linkedin.com/in/jane-doe");
     expect(result.speaker.youtube).toBeNull();
-    expect(result.speaker.skool).toBeNull();
+    expect(result.speaker.twitch).toBeNull();
     expect(result.speaker.tiktok).toBeNull();
+  });
+
+  it.each([
+    ["websiteUrl", "http://example.com", "Website"],
+    ["instagram", "javascript:alert(1)", "Instagram"],
+    ["linkedin", "https://evil.com/in/jane", "LinkedIn"],
+    ["discord", "https://discord.gg.evil.com/abc", "Discord"],
+  ] as const)("rejects an invalid %s link and stores nothing", async (key, value, label) => {
+    const repo = new InMemorySpeakerRepository();
+    const result = await createSpeaker(repo, "event-1", { ...base, [key]: value });
+    expect(result.status).toBe("invalid");
+    if (result.status === "invalid") {
+      expect(result.errors[key]?._errors[0]).toContain(label);
+    }
+    expect(await repo.listByEvent("event-1")).toHaveLength(0);
   });
 
   it("sets, changes, and clears links on update", async () => {
     const repo = new InMemorySpeakerRepository();
-    const created = await createSpeaker(repo, "event-1", {
-      name: "A",
-      title: "",
-      bio: "",
-      instagram: "old",
-      discord: "abc123",
-    });
+    const created = await createSpeaker(repo, "event-1", { ...base, instagram: "old", discord: "abc123" });
     if (created.status !== "created") throw new Error("setup failed");
 
-    await updateSpeaker(repo, created.speaker.id, {
-      name: "A",
-      title: "",
-      bio: "",
+    const result = await updateSpeaker(repo, created.speaker.id, {
+      ...base,
       instagram: "new",
       discord: "",
       twitch: "janelive",
     });
+    expect(result.status).toBe("updated");
 
     const [speaker] = await repo.listByEvent("event-1");
-    expect(speaker.instagram).toBe("new");
+    expect(speaker.instagram).toBe("https://www.instagram.com/new");
     expect(speaker.discord).toBeNull();
-    expect(speaker.twitch).toBe("janelive");
+    expect(speaker.twitch).toBe("https://www.twitch.tv/janelive");
+  });
+
+  it("rejects an invalid link on update and leaves the speaker unchanged", async () => {
+    const repo = new InMemorySpeakerRepository();
+    const created = await createSpeaker(repo, "event-1", { ...base, instagram: "jane" });
+    if (created.status !== "created") throw new Error("setup failed");
+
+    const result = await updateSpeaker(repo, created.speaker.id, { ...base, instagram: "http://instagram.com/jane" });
+    expect(result.status).toBe("invalid");
+    expect((await repo.listByEvent("event-1"))[0].instagram).toBe("https://www.instagram.com/jane");
   });
 });
 

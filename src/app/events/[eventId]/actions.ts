@@ -9,7 +9,13 @@ import { SupabaseSponsorRepository } from "@/repositories/supabase-sponsor-repos
 import { SupabaseSessionRepository } from "@/repositories/supabase-session-repository";
 import { SupabaseEventInfoSectionRepository } from "@/repositories/supabase-event-info-section-repository";
 import { renameEvent, updateEventDetails } from "@/services/event-service";
-import { createSpeaker, updateSpeaker, deleteSpeaker } from "@/services/speaker-service";
+import {
+  createSpeaker,
+  createSpeakerSchema,
+  updateSpeaker,
+  updateSpeakerSchema,
+  deleteSpeaker,
+} from "@/services/speaker-service";
 import { createSponsor, updateSponsor, deleteSponsor } from "@/services/sponsor-service";
 import { createSession, deleteSession } from "@/services/session-service";
 import {
@@ -73,24 +79,42 @@ export async function updateEventDetailsAction(eventId: string, formData: FormDa
   redirect(`/events/${eventId}?tab=details`);
 }
 
+/** First human-readable message from a zod `.format()` error tree. */
+function firstErrorMessage(errors: object): string {
+  return (
+    Object.values(errors)
+      .flatMap((v) => (v && typeof v === "object" && "_errors" in v ? (v as { _errors: string[] })._errors : []))
+      .find(Boolean) ?? "Please check your input."
+  );
+}
+
+function redirectWithError(eventId: string, tab: string, message: string): never {
+  redirect(`/events/${eventId}?tab=${tab}&error=${encodeURIComponent(message)}`);
+}
+
 export async function createSpeakerAction(eventId: string, formData: FormData) {
   await requireUser();
   const supabase = await createClient();
   const repo = new SupabaseSpeakerRepository(supabase);
+  const fields = {
+    name: String(formData.get("name") ?? ""),
+    title: String(formData.get("title") ?? ""),
+    bio: String(formData.get("bio") ?? ""),
+    featured: formData.get("featured") === "on",
+    ...readSpeakerLinks(formData),
+  };
+  // Validate before uploading, so a rejected link doesn't leave an orphaned photo in storage.
+  const check = createSpeakerSchema.safeParse(fields);
+  if (!check.success) redirectWithError(eventId, "speakers", firstErrorMessage(check.error.format()));
+
   const photoUrl = await uploadEventMedia(
     supabase,
     eventId,
     formData.get("photo") as File | null,
     "speakers",
   );
-  await createSpeaker(repo, eventId, {
-    name: String(formData.get("name") ?? ""),
-    title: String(formData.get("title") ?? ""),
-    bio: String(formData.get("bio") ?? ""),
-    featured: formData.get("featured") === "on",
-    ...readSpeakerLinks(formData),
-    photoUrl,
-  });
+  const result = await createSpeaker(repo, eventId, { ...fields, photoUrl });
+  if (result.status === "invalid") redirectWithError(eventId, "speakers", firstErrorMessage(result.errors));
   redirect(`/events/${eventId}?tab=speakers`);
 }
 
@@ -99,22 +123,22 @@ export async function updateSpeakerAction(eventId: string, formData: FormData) {
   const supabase = await createClient();
   const repo = new SupabaseSpeakerRepository(supabase);
   const speakerId = String(formData.get("speakerId") ?? "");
+  const fields = {
+    name: String(formData.get("name") ?? ""),
+    title: String(formData.get("title") ?? ""),
+    bio: String(formData.get("bio") ?? ""),
+    featured: formData.get("featured") === "on",
+    ...readSpeakerLinks(formData),
+  };
+  const check = updateSpeakerSchema.safeParse(fields);
+  if (!check.success) redirectWithError(eventId, "speakers", firstErrorMessage(check.error.format()));
+
   const newPhoto = formData.get("photo") as File | null;
   const newPhotoUrl = newPhoto && newPhoto.size > 0
     ? await uploadEventMedia(supabase, eventId, newPhoto, "speakers")
     : undefined;
-  await updateSpeaker(
-    repo,
-    speakerId,
-    {
-      name: String(formData.get("name") ?? ""),
-      title: String(formData.get("title") ?? ""),
-      bio: String(formData.get("bio") ?? ""),
-      featured: formData.get("featured") === "on",
-      ...readSpeakerLinks(formData),
-    },
-    newPhotoUrl,
-  );
+  const result = await updateSpeaker(repo, speakerId, fields, newPhotoUrl);
+  if (result.status === "invalid") redirectWithError(eventId, "speakers", firstErrorMessage(result.errors));
   redirect(`/events/${eventId}?tab=speakers`);
 }
 

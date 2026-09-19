@@ -1,31 +1,40 @@
 import { z } from "zod";
-import type { SpeakerLinkKey } from "@/lib/speaker-links";
+import { normalizeSpeakerLink, type SpeakerLinkKey } from "@/lib/speaker-links";
 import type { Speaker, SpeakerRepository } from "@/repositories/speaker-repository";
 
-// Blank or missing becomes null. Deliberately no URL/handle validation:
-// the mobile app resolves handles and full URLs itself and silently
-// drops anything it can't use, and the actions don't surface validation
-// errors, so rejecting here would just lose the whole submit.
-const linkField = z
-  .string()
-  .trim()
-  .nullable()
-  .optional()
-  .transform((v): string | null => (v ? v : null));
+// Blank becomes null; anything else must pass that platform's link rules
+// (https only, the platform's own host and username syntax, standard URL
+// safety checks) and is stored as the canonical https URL. See
+// src/lib/speaker-links.ts.
+function linkField(key: SpeakerLinkKey) {
+  return z
+    .string()
+    .trim()
+    .nullable()
+    .optional()
+    .transform((value, ctx): string | null => {
+      const result = normalizeSpeakerLink(key, value);
+      if (!result.ok) {
+        ctx.addIssue({ code: "custom", message: result.error });
+        return z.NEVER;
+      }
+      return result.value;
+    });
+}
 
 // One entry per SPEAKER_LINK_FIELDS key; `satisfies` makes the compiler
 // flag a platform added to that list but missing here.
 const linkShape = {
-  websiteUrl: linkField,
-  instagram: linkField,
-  facebook: linkField,
-  youtube: linkField,
-  tiktok: linkField,
-  patreon: linkField,
-  twitch: linkField,
-  discord: linkField,
-  skool: linkField,
-} satisfies Record<SpeakerLinkKey, typeof linkField>;
+  websiteUrl: linkField("websiteUrl"),
+  instagram: linkField("instagram"),
+  facebook: linkField("facebook"),
+  youtube: linkField("youtube"),
+  tiktok: linkField("tiktok"),
+  linkedin: linkField("linkedin"),
+  patreon: linkField("patreon"),
+  twitch: linkField("twitch"),
+  discord: linkField("discord"),
+} satisfies Record<SpeakerLinkKey, ReturnType<typeof linkField>>;
 
 export const createSpeakerSchema = z.object({
   name: z.string().trim().min(1, "Name is required"),
