@@ -2,8 +2,22 @@ import { describe, expect, it } from "vitest";
 import { createFakeSupabase } from "@/test/fake-supabase";
 import { SupabaseEventInfoSectionRepository } from "./supabase-event-info-section-repository";
 
-const row = { id: "i-1", event_id: "evt-1", icon: "plane", title: "Getting here", body: "Fly to ATL" };
-const expected = { id: "i-1", eventId: "evt-1", icon: "plane", title: "Getting here", body: "Fly to ATL" };
+const row = {
+  id: "i-1",
+  event_id: "evt-1",
+  icon: "plane",
+  title: "Getting here",
+  body: "Fly to ATL",
+  link_target: null,
+};
+const expected = {
+  id: "i-1",
+  eventId: "evt-1",
+  icon: "plane",
+  title: "Getting here",
+  body: "Fly to ATL",
+  linkTarget: null,
+};
 
 describe("SupabaseEventInfoSectionRepository", () => {
   it("listByEvent maps rows and filters/orders by event and creation time", async () => {
@@ -30,12 +44,14 @@ describe("SupabaseEventInfoSectionRepository", () => {
       icon: "plane",
       title: "Getting here",
       body: "Fly to ATL",
+      linkTarget: null,
     });
     expect(fake.only().arg("insert")).toEqual({
       event_id: "evt-1",
       icon: "plane",
       title: "Getting here",
       body: "Fly to ATL",
+      link_target: null,
     });
     expect(section).toEqual(expected);
   });
@@ -46,9 +62,43 @@ describe("SupabaseEventInfoSectionRepository", () => {
       icon: "map",
       title: "T",
       body: "B",
+      linkTarget: null,
     });
-    expect(fake.only().arg("update")).toEqual({ icon: "map", title: "T", body: "B" });
+    expect(fake.only().arg("update")).toEqual({ icon: "map", title: "T", body: "B", link_target: null });
     expect(fake.only().ops.find((o) => o.method === "eq")?.args).toEqual(["id", "i-1"]);
+  });
+
+  it("maps a row that opens an existing screen, and writes the target on create and update", async () => {
+    const readFake = createFakeSupabase({ data: [{ ...row, icon: "presentation", title: "Speakers", link_target: "speakers" }] });
+    const [section] = await new SupabaseEventInfoSectionRepository(readFake.client).listByEvent("evt-1");
+    expect(section.linkTarget).toBe("speakers");
+
+    const createFake = createFakeSupabase({ data: row });
+    await new SupabaseEventInfoSectionRepository(createFake.client).create({
+      eventId: "evt-1",
+      icon: "presentation",
+      title: "Speakers",
+      body: "",
+      linkTarget: "speakers",
+    });
+    expect(createFake.only().arg("insert")).toMatchObject({ link_target: "speakers" });
+
+    const updateFake = createFakeSupabase();
+    await new SupabaseEventInfoSectionRepository(updateFake.client).update("i-1", {
+      icon: "presentation",
+      title: "Speakers",
+      body: "",
+      linkTarget: "speakers",
+    });
+    expect(updateFake.only().arg("update")).toMatchObject({ link_target: "speakers" });
+  });
+
+  it("maps a missing link_target column to null", async () => {
+    const { link_target: _omit, ...withoutTarget } = row;
+    void _omit;
+    const fake = createFakeSupabase({ data: [withoutTarget] });
+    const [section] = await new SupabaseEventInfoSectionRepository(fake.client).listByEvent("evt-1");
+    expect(section.linkTarget).toBeNull();
   });
 
   it("delete removes by id", async () => {
@@ -62,9 +112,9 @@ describe("SupabaseEventInfoSectionRepository", () => {
     ["listByEvent", (r: SupabaseEventInfoSectionRepository) => r.listByEvent("e")],
     [
       "create",
-      (r: SupabaseEventInfoSectionRepository) => r.create({ eventId: "e", icon: "info", title: "t", body: "" }),
+      (r: SupabaseEventInfoSectionRepository) => r.create({ eventId: "e", icon: "info", title: "t", body: "", linkTarget: null }),
     ],
-    ["update", (r: SupabaseEventInfoSectionRepository) => r.update("i", { icon: "info", title: "t", body: "" })],
+    ["update", (r: SupabaseEventInfoSectionRepository) => r.update("i", { icon: "info", title: "t", body: "", linkTarget: null })],
     ["delete", (r: SupabaseEventInfoSectionRepository) => r.delete("i")],
   ])("%s throws the Supabase error", async (_name, run) => {
     const error = { message: "boom" };

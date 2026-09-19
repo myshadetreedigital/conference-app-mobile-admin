@@ -9,7 +9,11 @@ import { SupabaseSpeakerRepository } from "@/repositories/supabase-speaker-repos
 import { SupabaseSponsorRepository } from "@/repositories/supabase-sponsor-repository";
 import { SupabaseSessionRepository } from "@/repositories/supabase-session-repository";
 import { SupabaseEventInfoSectionRepository } from "@/repositories/supabase-event-info-section-repository";
-import { EVENT_INFO_SECTION_ICONS } from "@/repositories/event-info-section-repository";
+import {
+  EVENT_INFO_SECTION_ICONS,
+  EVENT_INFO_SECTION_LINK_TARGETS,
+  type EventInfoSectionLinkTarget,
+} from "@/repositories/event-info-section-repository";
 import type { Speaker } from "@/repositories/speaker-repository";
 import { SPEAKER_LINK_FIELDS } from "@/lib/speaker-links";
 import {
@@ -29,6 +33,33 @@ import {
 } from "./actions";
 
 const TIERS = ["diamond", "platinum", "gold", "silver", "bronze", "a_la_carte"] as const;
+
+// What a More Info row does when tapped: open its own page of text, or
+// jump to an existing screen. "" (the text option) is stored as null.
+function LinkTargetSelect({ defaultValue }: { defaultValue: EventInfoSectionLinkTarget | null }) {
+  return (
+    <label className="flex items-center gap-2 text-sm">
+      <span className="text-zinc-500">When tapped</span>
+      <select name="linkTarget" defaultValue={defaultValue ?? ""} className="rounded border px-3 py-2">
+        <option value="">Opens a page of text (the body below)</option>
+        {EVENT_INFO_SECTION_LINK_TARGETS.map((target) => (
+          <option key={target} value={target}>
+            Opens the {target} screen
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function FormattingHint() {
+  return (
+    <p className="text-xs text-zinc-500">
+      Formatting: **bold**, [link text](https://example.com), # Heading, and a blank line between
+      paragraphs. Links must be https:// and are checked when you save.
+    </p>
+  );
+}
 
 // Link inputs shared by the add and edit speaker forms. Names match the
 // SPEAKER_LINK_FIELDS keys, which readSpeakerLinks() reads back.
@@ -59,7 +90,7 @@ const TABS = [
   { key: "sessions", label: "Sessions" },
   { key: "speakers", label: "Speakers" },
   { key: "sponsors", label: "Sponsors" },
-  { key: "my-event", label: "My Event content" },
+  { key: "my-event", label: "More Info" },
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
 
@@ -258,6 +289,34 @@ export default async function EventContentPage({
                       placeholder="Venue name, city"
                       className="w-full rounded border px-3 py-2"
                     />
+                    <p className="text-xs text-zinc-500">
+                      Shown in the More Info screen&apos;s Location block. Tapping it opens this address in
+                      the phone&apos;s Maps app, so include the street address.
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <label htmlFor="event-location-image" className="text-xs font-medium text-zinc-500">
+                      {event.locationImageUrl ? "Replace location image" : "Location image (optional)"}
+                    </label>
+                    {event.locationImageUrl && (
+                      <Image
+                        src={event.locationImageUrl}
+                        alt="Location"
+                        width={240}
+                        height={120}
+                        className="h-24 w-48 rounded object-cover"
+                      />
+                    )}
+                    <input
+                      id="event-location-image"
+                      name="locationImage"
+                      type="file"
+                      accept="image/*"
+                      className="block text-sm"
+                    />
+                    <p className="text-xs text-zinc-500">
+                      A picture of the venue area (a map screenshot works well), shown above the address.
+                    </p>
                   </div>
                   <div className="space-y-1">
                     <label htmlFor="event-description" className="text-xs font-medium text-zinc-500">
@@ -608,10 +667,11 @@ export default async function EventContentPage({
 
           {activeTab === "my-event" && (
             <section className="space-y-3">
-              <h2 className="text-lg font-medium">My Event content</h2>
+              <h2 className="text-lg font-medium">More Info content</h2>
               <p className="text-sm text-zinc-500">
-                Informational rows shown on the &quot;My Event&quot; tab in the mobile app (About,
-                Getting here, Emergency info, etc). Read-only for attendees.
+                Rows shown on the &quot;More Info&quot; tab in the mobile app (About, Getting here,
+                Emergency info, etc). Tapping a row opens its own page, or an existing screen like
+                Speakers. Read-only for attendees.
               </p>
               <ul className="space-y-2">
                 {infoSections.length === 0 && (
@@ -622,7 +682,10 @@ export default async function EventContentPage({
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="font-medium">{section.title}</p>
-                        <p className="text-xs text-zinc-500">{section.icon}</p>
+                        <p className="text-xs text-zinc-500">
+                          {section.icon}
+                          {section.linkTarget ? ` · opens the ${section.linkTarget} screen` : ""}
+                        </p>
                       </div>
                       <div className="flex items-center gap-3">
                         <details className="relative">
@@ -645,12 +708,15 @@ export default async function EventContentPage({
                               required
                               className="w-full rounded border px-3 py-2"
                             />
+                            <LinkTargetSelect defaultValue={section.linkTarget} />
                             <textarea
                               name="body"
                               defaultValue={section.body}
                               placeholder="Body (optional)"
+                              rows={6}
                               className="w-full rounded border px-3 py-2"
                             />
+                            <FormattingHint />
                             <button
                               type="submit"
                               className="rounded bg-black px-4 py-2 text-white hover:bg-zinc-800"
@@ -689,7 +755,14 @@ export default async function EventContentPage({
                     ))}
                   </select>
                 </div>
-                <textarea name="body" placeholder="Body (optional)" className="w-full rounded border px-3 py-2" />
+                <LinkTargetSelect defaultValue={null} />
+                <textarea
+                  name="body"
+                  placeholder="Body (optional)"
+                  rows={6}
+                  className="w-full rounded border px-3 py-2"
+                />
+                <FormattingHint />
                 <button type="submit" className="rounded bg-black px-4 py-2 text-white hover:bg-zinc-800">
                   Add section
                 </button>

@@ -1,13 +1,33 @@
 import { z } from "zod";
-import { EVENT_INFO_SECTION_ICONS } from "@/repositories/event-info-section-repository";
+import { findBadLink, MAX_SECTION_BODY_LENGTH } from "@/lib/markdown-links";
+import {
+  EVENT_INFO_SECTION_ICONS,
+  EVENT_INFO_SECTION_LINK_TARGETS,
+} from "@/repositories/event-info-section-repository";
 import type { EventInfoSection, EventInfoSectionRepository } from "@/repositories/event-info-section-repository";
 
 const iconSchema = z.enum(EVENT_INFO_SECTION_ICONS);
 
+// Section text may contain Markdown links; each must be a safe https link
+// (see src/lib/markdown-links.ts).
+const bodySchema = z
+  .string()
+  .trim()
+  .max(MAX_SECTION_BODY_LENGTH, "Text is too long.")
+  .superRefine((body, ctx) => {
+    const problem = findBadLink(body);
+    if (problem) ctx.addIssue({ code: "custom", message: problem });
+  })
+  .default("");
+
+// Blank/missing = a normal page of text; otherwise the row opens that screen.
+const linkTargetSchema = z.enum(EVENT_INFO_SECTION_LINK_TARGETS).nullish().transform((v) => v ?? null);
+
 export const createEventInfoSectionSchema = z.object({
   icon: iconSchema,
   title: z.string().trim().min(1, "Title is required"),
-  body: z.string().trim().default(""),
+  body: bodySchema,
+  linkTarget: linkTargetSchema,
 });
 
 export type CreateEventInfoSectionInput = z.input<typeof createEventInfoSectionSchema>;
@@ -32,7 +52,8 @@ export async function createEventInfoSection(
 export const updateEventInfoSectionSchema = z.object({
   icon: iconSchema,
   title: z.string().trim().min(1, "Title is required"),
-  body: z.string().trim().default(""),
+  body: bodySchema,
+  linkTarget: linkTargetSchema,
 });
 
 export type UpdateEventInfoSectionInput = z.input<typeof updateEventInfoSectionSchema>;

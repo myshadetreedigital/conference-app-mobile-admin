@@ -8,7 +8,7 @@ import { SupabaseSpeakerRepository } from "@/repositories/supabase-speaker-repos
 import { SupabaseSponsorRepository } from "@/repositories/supabase-sponsor-repository";
 import { SupabaseSessionRepository } from "@/repositories/supabase-session-repository";
 import { SupabaseEventInfoSectionRepository } from "@/repositories/supabase-event-info-section-repository";
-import { renameEvent, updateEventDetails } from "@/services/event-service";
+import { renameEvent, updateEventDetails, updateEventDetailsSchema } from "@/services/event-service";
 import {
   createSpeaker,
   createSpeakerSchema,
@@ -24,7 +24,10 @@ import {
   deleteEventInfoSection,
 } from "@/services/event-info-section-service";
 import type { SponsorTier } from "@/repositories/sponsor-repository";
-import type { EventInfoSectionIcon } from "@/repositories/event-info-section-repository";
+import type {
+  EventInfoSectionIcon,
+  EventInfoSectionLinkTarget,
+} from "@/repositories/event-info-section-repository";
 import { uploadEventMedia } from "@/lib/upload-event-media";
 import { readSpeakerLinks } from "@/lib/speaker-links";
 
@@ -47,6 +50,20 @@ export async function updateEventDetailsAction(eventId: string, formData: FormDa
   await requireUser();
   const supabase = await createClient();
   const repo = new SupabaseEventRepository(supabase);
+  const fields = {
+    tagline: String(formData.get("tagline") ?? ""),
+    description: String(formData.get("description") ?? ""),
+    location: String(formData.get("location") ?? ""),
+    startsAt: String(formData.get("startsAt") ?? "") || null,
+    endsAt: String(formData.get("endsAt") ?? "") || null,
+    banner1LinkUrl: String(formData.get("banner1Link") ?? "") || null,
+    banner2LinkUrl: String(formData.get("banner2Link") ?? "") || null,
+    primaryColor: String(formData.get("primaryColor") ?? "") || null,
+  };
+  // Validate before uploading, so a rejected link doesn't leave orphaned images in storage.
+  const check = updateEventDetailsSchema.safeParse(fields);
+  if (!check.success) redirectWithError(eventId, "details", firstErrorMessage(check.error.format()));
+
   const newLogo = formData.get("logo") as File | null;
   const newLogoUrl = newLogo && newLogo.size > 0
     ? await uploadEventMedia(supabase, eventId, newLogo, "events")
@@ -59,23 +76,20 @@ export async function updateEventDetailsAction(eventId: string, formData: FormDa
   const newBanner2Url = newBanner2 && newBanner2.size > 0
     ? await uploadEventMedia(supabase, eventId, newBanner2, "events")
     : undefined;
-  await updateEventDetails(
+  const newLocationImage = formData.get("locationImage") as File | null;
+  const newLocationImageUrl = newLocationImage && newLocationImage.size > 0
+    ? await uploadEventMedia(supabase, eventId, newLocationImage, "events")
+    : undefined;
+  const result = await updateEventDetails(
     repo,
     eventId,
-    {
-      tagline: String(formData.get("tagline") ?? ""),
-      description: String(formData.get("description") ?? ""),
-      location: String(formData.get("location") ?? ""),
-      startsAt: String(formData.get("startsAt") ?? "") || null,
-      endsAt: String(formData.get("endsAt") ?? "") || null,
-      banner1LinkUrl: String(formData.get("banner1Link") ?? "") || null,
-      banner2LinkUrl: String(formData.get("banner2Link") ?? "") || null,
-      primaryColor: String(formData.get("primaryColor") ?? "") || null,
-    },
+    fields,
     newLogoUrl,
     newBanner1Url,
     newBanner2Url,
+    newLocationImageUrl,
   );
+  if (result.status === "invalid") redirectWithError(eventId, "details", firstErrorMessage(result.errors));
   redirect(`/events/${eventId}?tab=details`);
 }
 
@@ -232,11 +246,13 @@ export async function createEventInfoSectionAction(eventId: string, formData: Fo
   await requireUser();
   const supabase = await createClient();
   const repo = new SupabaseEventInfoSectionRepository(supabase);
-  await createEventInfoSection(repo, eventId, {
+  const result = await createEventInfoSection(repo, eventId, {
     icon: String(formData.get("icon") ?? "info") as EventInfoSectionIcon,
     title: String(formData.get("title") ?? ""),
     body: String(formData.get("body") ?? ""),
+    linkTarget: (String(formData.get("linkTarget") ?? "") || null) as EventInfoSectionLinkTarget | null,
   });
+  if (result.status === "invalid") redirectWithError(eventId, "my-event", firstErrorMessage(result.errors));
   redirect(`/events/${eventId}?tab=my-event`);
 }
 
@@ -245,11 +261,13 @@ export async function updateEventInfoSectionAction(eventId: string, formData: Fo
   const supabase = await createClient();
   const repo = new SupabaseEventInfoSectionRepository(supabase);
   const sectionId = String(formData.get("sectionId") ?? "");
-  await updateEventInfoSection(repo, sectionId, {
+  const result = await updateEventInfoSection(repo, sectionId, {
     icon: String(formData.get("icon") ?? "info") as EventInfoSectionIcon,
     title: String(formData.get("title") ?? ""),
     body: String(formData.get("body") ?? ""),
+    linkTarget: (String(formData.get("linkTarget") ?? "") || null) as EventInfoSectionLinkTarget | null,
   });
+  if (result.status === "invalid") redirectWithError(eventId, "my-event", firstErrorMessage(result.errors));
   redirect(`/events/${eventId}?tab=my-event`);
 }
 

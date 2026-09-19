@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   EventInfoSection,
   EventInfoSectionIcon,
+  EventInfoSectionLinkTarget,
   EventInfoSectionRepository,
   NewEventInfoSection,
   UpdateEventInfoSectionData,
@@ -13,6 +14,7 @@ interface EventInfoSectionRow {
   icon: string;
   title: string;
   body: string;
+  link_target: string | null;
 }
 
 function toEventInfoSection(row: EventInfoSectionRow): EventInfoSection {
@@ -22,6 +24,7 @@ function toEventInfoSection(row: EventInfoSectionRow): EventInfoSection {
     icon: row.icon as EventInfoSectionIcon,
     title: row.title,
     body: row.body,
+    linkTarget: (row.link_target as EventInfoSectionLinkTarget | null) ?? null,
   };
 }
 
@@ -48,6 +51,7 @@ export class SupabaseEventInfoSectionRepository implements EventInfoSectionRepos
         icon: input.icon,
         title: input.title,
         body: input.body,
+        link_target: input.linkTarget,
       })
       .select()
       .single();
@@ -58,7 +62,7 @@ export class SupabaseEventInfoSectionRepository implements EventInfoSectionRepos
   async update(sectionId: string, data: UpdateEventInfoSectionData): Promise<void> {
     const { error } = await this.supabase
       .from("event_info_sections")
-      .update({ icon: data.icon, title: data.title, body: data.body })
+      .update({ icon: data.icon, title: data.title, body: data.body, link_target: data.linkTarget })
       .eq("id", sectionId);
     if (error) throw error;
   }

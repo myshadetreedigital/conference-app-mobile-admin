@@ -21,6 +21,7 @@ const row = {
   banner_1_link_url: "https://example.com/1",
   banner_2_image_url: null,
   banner_2_link_url: null,
+  location_image_url: "https://cdn.example.com/venue.png",
 };
 
 const expected = {
@@ -42,6 +43,7 @@ const expected = {
   banner1LinkUrl: "https://example.com/1",
   banner2ImageUrl: null,
   banner2LinkUrl: null,
+  locationImageUrl: "https://cdn.example.com/venue.png",
 };
 
 const details = {
@@ -153,6 +155,27 @@ describe("SupabaseEventRepository writes", () => {
       banner_1_image_url: null,
       banner_2_image_url: "https://x/b2.png",
     });
+  });
+
+  it("updateDetails sets, clears, or leaves the location image", async () => {
+    const set = createFakeSupabase();
+    await new SupabaseEventRepository(set.client).updateDetails("e-1", { ...details, locationImageUrl: "https://x/v.png" });
+    expect(set.only().arg("update")).toHaveProperty("location_image_url", "https://x/v.png");
+
+    const cleared = createFakeSupabase();
+    await new SupabaseEventRepository(cleared.client).updateDetails("e-1", { ...details, locationImageUrl: null });
+    expect(cleared.only().arg("update")).toHaveProperty("location_image_url", null);
+
+    const untouched = createFakeSupabase();
+    await new SupabaseEventRepository(untouched.client).updateDetails("e-1", details);
+    expect(untouched.only().arg("update")).not.toHaveProperty("location_image_url");
+  });
+
+  it("maps a missing location_image_url column to null", async () => {
+    const { location_image_url: _omit, ...withoutImage } = row;
+    void _omit;
+    const fake = createFakeSupabase({ data: withoutImage });
+    expect((await new SupabaseEventRepository(fake.client).findById("e-1"))?.locationImageUrl).toBeNull();
   });
 
   it.each([

@@ -44,6 +44,7 @@ export class InMemoryEventRepository implements EventRepository {
       banner1LinkUrl: null,
       banner2ImageUrl: null,
       banner2LinkUrl: null,
+      locationImageUrl: null,
     };
     this.byId.set(event.id, event);
     return event;
@@ -87,5 +88,6 @@ export class InMemoryEventRepository implements EventRepository {
     if (data.logoUrl !== undefined) event.logoUrl = data.logoUrl;
     if (data.banner1ImageUrl !== undefined) event.banner1ImageUrl = data.banner1ImageUrl;
     if (data.banner2ImageUrl !== undefined) event.banner2ImageUrl = data.banner2ImageUrl;
+    if (data.locationImageUrl !== undefined) event.locationImageUrl = data.locationImageUrl;
   }
 }

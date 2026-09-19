@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import type { Event, EventRepository } from "@/repositories/event-repository";
+import { checkWebsite } from "@/lib/safe-url";
 import { toSlug } from "@/lib/slug";
 
 export const createEventSchema = z.object({
@@ -101,12 +102,24 @@ const dateSchema = z
   .optional()
   .transform((v): string | null => (v ? v : null));
 
-const linkSchema = z
-  .string()
-  .trim()
-  .nullable()
-  .optional()
-  .transform((v): string | null => (v ? v : null));
+// A banner link opens in the attendee's browser, so it gets the standard
+// https-only checks (see src/lib/safe-url.ts). A bare domain gets https://.
+function bannerLinkSchema(label: string) {
+  return z
+    .string()
+    .trim()
+    .nullable()
+    .optional()
+    .transform((v, ctx): string | null => {
+      if (!v) return null;
+      const checked = checkWebsite(v);
+      if (!checked.ok) {
+        ctx.addIssue({ code: "custom", message: `${label}: ${checked.error}` });
+        return z.NEVER;
+      }
+      return checked.url.href;
+    });
+}
 
 // The mobile app's one org-customizable accent color — see its
 // AccentProvider, which falls back to the house default when this is null.
@@ -126,8 +139,8 @@ export const updateEventDetailsSchema = z.object({
   location: z.string().trim().default(""),
   startsAt: dateSchema,
   endsAt: dateSchema,
-  banner1LinkUrl: linkSchema,
-  banner2LinkUrl: linkSchema,
+  banner1LinkUrl: bannerLinkSchema("Banner 1 link"),
+  banner2LinkUrl: bannerLinkSchema("Banner 2 link"),
   primaryColor: colorSchema,
 });
 
@@ -138,7 +151,7 @@ export type UpdateEventDetailsResult =
   | { status: "invalid"; errors: z.ZodFormattedError<UpdateEventDetailsInput> };
 
 /**
- * newLogoUrl/newBanner1Url/newBanner2Url are separate parameters, not
+ * newLogoUrl/newBanner1Url/newBanner2Url/newLocationImageUrl are separate parameters, not
  * part of the validated form fields — only set by the action when a
  * new file was actually uploaded, matching updateSpeaker's
  * newPhotoUrl. Leaving one undefined keeps that existing image untouched.
@@ -150,6 +163,7 @@ export async function updateEventDetails(
   newLogoUrl?: string | null,
   newBanner1Url?: string | null,
   newBanner2Url?: string | null,
+  newLocationImageUrl?: string | null,
 ): Promise<UpdateEventDetailsResult> {
   const parsed = updateEventDetailsSchema.safeParse(rawInput);
   if (!parsed.success) {
@@ -160,6 +174,7 @@ export async function updateEventDetails(
     logoUrl: newLogoUrl,
     banner1ImageUrl: newBanner1Url,
     banner2ImageUrl: newBanner2Url,
+    locationImageUrl: newLocationImageUrl,
   });
   return { status: "updated" };
 }

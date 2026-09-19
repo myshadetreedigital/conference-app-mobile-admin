@@ -19,6 +19,8 @@ export interface Event {
   banner1LinkUrl: string | null;
   banner2ImageUrl: string | null;
   banner2LinkUrl: string | null;
+  /** Image of the venue area shown in the mobile app's Location block. */
+  locationImageUrl: string | null;
 }
 
 export interface NewEvent {
@@ -44,6 +46,7 @@ export interface UpdateEventDetailsData {
   logoUrl?: string | null;
   banner1ImageUrl?: string | null;
   banner2ImageUrl?: string | null;
+  locationImageUrl?: string | null;
 }
 
 /** Scoped to the events aggregate only — see docs/ARCHITECTURE.md's Layering section. */

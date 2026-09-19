@@ -26,6 +26,7 @@ interface EventRow {
   banner_1_link_url: string | null;
   banner_2_image_url: string | null;
   banner_2_link_url: string | null;
+  location_image_url: string | null;
 }
 
 function toEvent(row: EventRow): Event {
@@ -48,6 +49,7 @@ function toEvent(row: EventRow): Event {
     banner1LinkUrl: row.banner_1_link_url,
     banner2ImageUrl: row.banner_2_image_url,
     banner2LinkUrl: row.banner_2_link_url,
+    locationImageUrl: row.location_image_url ?? null,
   };
 }
 
@@ -132,6 +134,7 @@ export class SupabaseEventRepository implements EventRepository {
     if (data.logoUrl !== undefined) patch.logo_url = data.logoUrl;
     if (data.banner1ImageUrl !== undefined) patch.banner_1_image_url = data.banner1ImageUrl;
     if (data.banner2ImageUrl !== undefined) patch.banner_2_image_url = data.banner2ImageUrl;
+    if (data.locationImageUrl !== undefined) patch.location_image_url = data.locationImageUrl;
     const { error } = await this.supabase.from("events").update(patch).eq("id", eventId);
     if (error) throw error;
   }
