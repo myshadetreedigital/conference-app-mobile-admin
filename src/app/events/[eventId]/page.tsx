@@ -10,6 +10,8 @@ import { SupabaseSponsorRepository } from "@/repositories/supabase-sponsor-repos
 import { SupabaseSessionRepository } from "@/repositories/supabase-session-repository";
 import { SupabaseEventInfoSectionRepository } from "@/repositories/supabase-event-info-section-repository";
 import { EVENT_INFO_SECTION_ICONS } from "@/repositories/event-info-section-repository";
+import type { Speaker } from "@/repositories/speaker-repository";
+import { SPEAKER_LINK_FIELDS } from "@/lib/speaker-links";
 import {
   renameEventAction,
   updateEventDetailsAction,
@@ -27,6 +29,30 @@ import {
 } from "./actions";
 
 const TIERS = ["diamond", "platinum", "gold", "silver", "bronze", "a_la_carte"] as const;
+
+// Link inputs shared by the add and edit speaker forms. Names match the
+// SPEAKER_LINK_FIELDS keys, which readSpeakerLinks() reads back.
+function SpeakerLinkInputs({ speaker }: { speaker?: Speaker }) {
+  return (
+    <fieldset className="space-y-2">
+      <legend className="text-xs font-medium text-zinc-500">Links (optional)</legend>
+      {SPEAKER_LINK_FIELDS.map(({ key, label, placeholder }) => (
+        <div key={key} className="flex items-center gap-2">
+          <label htmlFor={`${speaker?.id ?? "new"}-${key}`} className="w-24 shrink-0 text-sm">
+            {label}
+          </label>
+          <input
+            id={`${speaker?.id ?? "new"}-${key}`}
+            name={key}
+            defaultValue={speaker?.[key] ?? ""}
+            placeholder={placeholder}
+            className="w-full rounded border px-3 py-2"
+          />
+        </div>
+      ))}
+    </fieldset>
+  );
+}
 
 const TABS = [
   { key: "details", label: "Event details" },
@@ -435,6 +461,7 @@ export default async function EventContentPage({
                               />
                               Featured
                             </label>
+                            <SpeakerLinkInputs speaker={speaker} />
                             <div className="space-y-1">
                               <label className="text-xs font-medium text-zinc-500">
                                 Replace photo (optional)
@@ -468,6 +495,7 @@ export default async function EventContentPage({
                   <input type="checkbox" name="featured" />
                   Featured
                 </label>
+                <SpeakerLinkInputs />
                 <div className="space-y-1">
                   <label htmlFor="speaker-photo" className="text-xs font-medium text-zinc-500">
                     Photo (optional)

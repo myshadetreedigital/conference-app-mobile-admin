@@ -1,4 +1,6 @@
-export interface Speaker {
+import type { SpeakerLinks } from "@/lib/speaker-links";
+
+export interface Speaker extends SpeakerLinks {
   id: string;
   eventId: string;
   name: string;
@@ -8,7 +10,7 @@ export interface Speaker {
   featured: boolean;
 }
 
-export interface NewSpeaker {
+export interface NewSpeaker extends SpeakerLinks {
   eventId: string;
   name: string;
   title: string;
@@ -17,7 +19,7 @@ export interface NewSpeaker {
   featured: boolean;
 }
 
-export interface UpdateSpeakerData {
+export interface UpdateSpeakerData extends SpeakerLinks {
   name: string;
   title: string;
   bio: string;

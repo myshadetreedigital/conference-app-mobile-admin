@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { SPEAKER_LINK_FIELDS } from "@/lib/speaker-links";
 import { InMemorySpeakerRepository } from "@/test/in-memory-speaker-repository";
 import { createSpeaker, updateSpeaker, deleteSpeaker } from "./speaker-service";
 
@@ -133,6 +134,62 @@ describe("updateSpeaker", () => {
 
     const result = await updateSpeaker(repo, created.speaker.id, { name: "  ", title: "", bio: "" });
     expect(result.status).toBe("invalid");
+  });
+});
+
+describe("speaker links", () => {
+  it("defaults every link to null when none are given", async () => {
+    const repo = new InMemorySpeakerRepository();
+    const result = await createSpeaker(repo, "event-1", { name: "A", title: "", bio: "" });
+    if (result.status !== "created") throw new Error("setup failed");
+    for (const { key } of SPEAKER_LINK_FIELDS) {
+      expect(result.speaker[key]).toBeNull();
+    }
+  });
+
+  it("stores trimmed links and turns blank ones into null", async () => {
+    const repo = new InMemorySpeakerRepository();
+    const result = await createSpeaker(repo, "event-1", {
+      name: "A",
+      title: "",
+      bio: "",
+      websiteUrl: "  example.com ",
+      instagram: "@jane",
+      youtube: "   ",
+      skool: "",
+    });
+    if (result.status !== "created") throw new Error("setup failed");
+    expect(result.speaker.websiteUrl).toBe("example.com");
+    expect(result.speaker.instagram).toBe("@jane");
+    expect(result.speaker.youtube).toBeNull();
+    expect(result.speaker.skool).toBeNull();
+    expect(result.speaker.tiktok).toBeNull();
+  });
+
+  it("sets, changes, and clears links on update", async () => {
+    const repo = new InMemorySpeakerRepository();
+    const created = await createSpeaker(repo, "event-1", {
+      name: "A",
+      title: "",
+      bio: "",
+      instagram: "old",
+      discord: "abc123",
+    });
+    if (created.status !== "created") throw new Error("setup failed");
+
+    await updateSpeaker(repo, created.speaker.id, {
+      name: "A",
+      title: "",
+      bio: "",
+      instagram: "new",
+      discord: "",
+      twitch: "janelive",
+    });
+
+    const [speaker] = await repo.listByEvent("event-1");
+    expect(speaker.instagram).toBe("new");
+    expect(speaker.discord).toBeNull();
+    expect(speaker.twitch).toBe("janelive");
   });
 });
 

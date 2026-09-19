@@ -20,6 +20,7 @@ import {
 import type { SponsorTier } from "@/repositories/sponsor-repository";
 import type { EventInfoSectionIcon } from "@/repositories/event-info-section-repository";
 import { uploadEventMedia } from "@/lib/upload-event-media";
+import { readSpeakerLinks } from "@/lib/speaker-links";
 
 export async function renameEventAction(eventId: string, formData: FormData) {
   await requireUser();
@@ -87,6 +88,7 @@ export async function createSpeakerAction(eventId: string, formData: FormData) {
     title: String(formData.get("title") ?? ""),
     bio: String(formData.get("bio") ?? ""),
     featured: formData.get("featured") === "on",
+    ...readSpeakerLinks(formData),
     photoUrl,
   });
   redirect(`/events/${eventId}?tab=speakers`);
@@ -109,6 +111,7 @@ export async function updateSpeakerAction(eventId: string, formData: FormData) {
       title: String(formData.get("title") ?? ""),
       bio: String(formData.get("bio") ?? ""),
       featured: formData.get("featured") === "on",
+      ...readSpeakerLinks(formData),
     },
     newPhotoUrl,
   );

@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { SPEAKER_LINK_FIELDS, type SpeakerLinks } from "@/lib/speaker-links";
 import type { NewSpeaker, Speaker, SpeakerRepository, UpdateSpeakerData } from "./speaker-repository";
 
 interface SpeakerRow {
@@ -9,6 +10,24 @@ interface SpeakerRow {
   bio: string;
   photo_url: string | null;
   featured: boolean;
+  // Plus one nullable text column per SPEAKER_LINK_FIELDS entry,
+  // read by name in the helpers below.
+}
+
+function toLinks(row: Record<string, unknown>): SpeakerLinks {
+  const links = {} as SpeakerLinks;
+  for (const { key, column } of SPEAKER_LINK_FIELDS) {
+    links[key] = (row[column] as string | null) ?? null;
+  }
+  return links;
+}
+
+function toLinkColumns(links: SpeakerLinks): Record<string, string | null> {
+  const columns: Record<string, string | null> = {};
+  for (const { key, column } of SPEAKER_LINK_FIELDS) {
+    columns[column] = links[key];
+  }
+  return columns;
 }
 
 function toSpeaker(row: SpeakerRow): Speaker {
@@ -20,6 +39,7 @@ function toSpeaker(row: SpeakerRow): Speaker {
     bio: row.bio,
     photoUrl: row.photo_url,
     featured: row.featured,
+    ...toLinks(row as unknown as Record<string, unknown>),
   };
 }
 
@@ -49,6 +69,7 @@ export class SupabaseSpeakerRepository implements SpeakerRepository {
         bio: input.bio,
         photo_url: input.photoUrl,
         featured: input.featured,
+        ...toLinkColumns(input),
       })
       .select()
       .single();
@@ -62,6 +83,7 @@ export class SupabaseSpeakerRepository implements SpeakerRepository {
       title: data.title,
       bio: data.bio,
       featured: data.featured,
+      ...toLinkColumns(data),
     };
     if (data.photoUrl !== undefined) patch.photo_url = data.photoUrl;
     const { error } = await this.supabase.from("speakers").update(patch).eq("id", speakerId);

@@ -1,11 +1,38 @@
 import { z } from "zod";
+import type { SpeakerLinkKey } from "@/lib/speaker-links";
 import type { Speaker, SpeakerRepository } from "@/repositories/speaker-repository";
+
+// Blank or missing becomes null. Deliberately no URL/handle validation:
+// the mobile app resolves handles and full URLs itself and silently
+// drops anything it can't use, and the actions don't surface validation
+// errors, so rejecting here would just lose the whole submit.
+const linkField = z
+  .string()
+  .trim()
+  .nullable()
+  .optional()
+  .transform((v): string | null => (v ? v : null));
+
+// One entry per SPEAKER_LINK_FIELDS key; `satisfies` makes the compiler
+// flag a platform added to that list but missing here.
+const linkShape = {
+  websiteUrl: linkField,
+  instagram: linkField,
+  facebook: linkField,
+  youtube: linkField,
+  tiktok: linkField,
+  patreon: linkField,
+  twitch: linkField,
+  discord: linkField,
+  skool: linkField,
+} satisfies Record<SpeakerLinkKey, typeof linkField>;
 
 export const createSpeakerSchema = z.object({
   name: z.string().trim().min(1, "Name is required"),
   title: z.string().trim().default(""),
   bio: z.string().trim().default(""),
   featured: z.boolean().default(false),
+  ...linkShape,
   // Already a Storage public URL by the time it reaches here — the
   // upload itself is an I/O side effect handled by the action, not
   // this validation/persistence service (see docs/ARCHITECTURE.md's
@@ -42,6 +69,8 @@ export const updateSpeakerSchema = z.object({
   title: z.string().trim().default(""),
   bio: z.string().trim().default(""),
   featured: z.boolean().default(false),
+  // Always a full replace, like title and bio: a blank input clears the link.
+  ...linkShape,
 });
 
 export type UpdateSpeakerInput = z.input<typeof updateSpeakerSchema>;

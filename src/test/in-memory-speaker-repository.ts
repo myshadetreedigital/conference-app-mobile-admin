@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { SPEAKER_LINK_FIELDS } from "@/lib/speaker-links";
 import type {
   NewSpeaker,
   Speaker,
@@ -26,6 +27,7 @@ export class InMemorySpeakerRepository implements SpeakerRepository {
     speaker.title = data.title;
     speaker.bio = data.bio;
     speaker.featured = data.featured;
+    for (const { key } of SPEAKER_LINK_FIELDS) speaker[key] = data[key];
     if (data.photoUrl !== undefined) speaker.photoUrl = data.photoUrl;
   }
 
