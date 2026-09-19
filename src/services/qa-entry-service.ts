@@ -1,9 +1,14 @@
 import { z } from "zod";
+import type { QaEntryRepository } from "@/repositories/qa-entry-repository";
 import { htmlField } from "./html-field";
-import type { QaEntry, QaEntryRepository } from "@/repositories/qa-entry-repository";
 
-export const MAX_QUESTION_LENGTH = 300;
-export const MAX_ANSWER_LENGTH = 5000;
+// A Q&A page's pairs are edited together with the row, in one form: the admin
+// adds, removes and reorders pairs in the browser and saves once. This service
+// checks the whole set, then makes the stored entries match it.
+
+import { MAX_ANSWER_LENGTH, MAX_QA_PAIRS, MAX_QUESTION_LENGTH } from "@/lib/qa-limits";
+
+export { MAX_ANSWER_LENGTH, MAX_QA_PAIRS, MAX_QUESTION_LENGTH };
 
 // Questions are plain text on one line — they render as a heading, so line
 // breaks and formatting have no place in them.
@@ -23,63 +28,81 @@ export const qaEntrySchema = z.object({ question: questionSchema, answer: answer
 
 export type QaEntryInput = z.input<typeof qaEntrySchema>;
 
-export type CreateQaEntryResult =
-  | { status: "created"; entry: QaEntry }
-  | { status: "invalid"; errors: z.ZodFormattedError<QaEntryInput> };
-
-export async function createQaEntry(
-  repo: QaEntryRepository,
-  target: { eventId: string; sectionId: string },
-  rawInput: QaEntryInput,
-): Promise<CreateQaEntryResult> {
-  const parsed = qaEntrySchema.safeParse(rawInput);
-  if (!parsed.success) return { status: "invalid", errors: parsed.error.format() };
-  const entry = await repo.create({ ...target, ...parsed.data });
-  return { status: "created", entry };
+/** One pair as submitted from the form. `id` is the stored entry's id, or "" for a pair that is new. */
+export interface QaPairInput {
+  id: string;
+  question: string;
+  answer: string;
 }
 
-export type UpdateQaEntryResult =
-  | { status: "updated" }
-  | { status: "invalid"; errors: z.ZodFormattedError<QaEntryInput> };
-
-export async function updateQaEntry(
-  repo: QaEntryRepository,
-  entryId: string,
-  rawInput: QaEntryInput,
-): Promise<UpdateQaEntryResult> {
-  const parsed = qaEntrySchema.safeParse(rawInput);
-  if (!parsed.success) return { status: "invalid", errors: parsed.error.format() };
-  await repo.update(entryId, parsed.data);
-  return { status: "updated" };
+/** A pair that passed every check, ready to store. */
+export interface ValidQaPair {
+  id: string | undefined;
+  question: string;
+  answer: string;
 }
 
-export async function deleteQaEntry(repo: QaEntryRepository, entryId: string): Promise<void> {
-  await repo.delete(entryId);
+export type QaPairsResult = { ok: true; pairs: ValidQaPair[] } | { ok: false; errors: string[] };
+
+/**
+ * Checks every submitted pair. A pair with both boxes empty is ignored (the
+ * form always offers a spare one). Problems are reported against the pair's
+ * number as shown in the form, and nothing is stored if there are any.
+ */
+export function validateQaPairs(submitted: QaPairInput[]): QaPairsResult {
+  if (submitted.length > MAX_QA_PAIRS) {
+    return { ok: false, errors: [`A Q&A page can have at most ${MAX_QA_PAIRS} questions.`] };
+  }
+
+  const pairs: ValidQaPair[] = [];
+  const errors = new Set<string>();
+  submitted.forEach((pair, index) => {
+    if (pair.question.trim() === "" && pair.answer.trim() === "") return;
+    const parsed = qaEntrySchema.safeParse({ question: pair.question, answer: pair.answer });
+    if (!parsed.success) {
+      for (const issue of parsed.error.issues) errors.add(`Question ${index + 1}: ${issue.message}`);
+      return;
+    }
+    pairs.push({ id: pair.id || undefined, ...parsed.data });
+  });
+
+  return errors.size > 0 ? { ok: false, errors: [...errors] } : { ok: true, pairs };
 }
 
 /**
- * The ids after moving one entry a place up or down. Moving the first entry
- * up, or the last down, changes nothing; an unknown id changes nothing.
+ * Makes a section's stored entries match the given pairs, in this order:
+ * pairs that are no longer there are deleted, pairs with a known id are
+ * updated, the rest are created. An id that doesn't belong to this section is
+ * treated as new, so a forged id can't touch another section's entry.
+ *
+ * These are several small writes, not one transaction; if one fails, saving
+ * again brings everything into line.
  */
-export function movedIds(orderedIds: string[], entryId: string, direction: "up" | "down"): string[] {
-  const from = orderedIds.indexOf(entryId);
-  const to = direction === "up" ? from - 1 : from + 1;
-  if (from === -1 || to < 0 || to >= orderedIds.length) return orderedIds;
-  const next = [...orderedIds];
-  [next[from], next[to]] = [next[to], next[from]];
-  return next;
-}
-
-export async function moveQaEntry(
+export async function saveQaPairs(
   repo: QaEntryRepository,
   target: { eventId: string; sectionId: string },
-  entryId: string,
-  direction: "up" | "down",
+  pairs: ValidQaPair[],
 ): Promise<void> {
-  const siblings = (await repo.listByEvent(target.eventId))
-    .filter((e) => e.sectionId === target.sectionId)
-    .sort((a, b) => a.position - b.position);
-  const ids = siblings.map((e) => e.id);
-  const next = movedIds(ids, entryId, direction);
-  if (next !== ids) await repo.reorder(target.sectionId, next);
+  const existing = (await repo.listByEvent(target.eventId)).filter((e) => e.sectionId === target.sectionId);
+  const existingIds = new Set(existing.map((e) => e.id));
+  const kept = new Set(pairs.flatMap((p) => (p.id && existingIds.has(p.id) ? [p.id] : [])));
+
+  for (const entry of existing) {
+    if (!kept.has(entry.id)) await repo.delete(entry.id);
+  }
+
+  const orderedIds: string[] = [];
+  const used = new Set<string>();
+  for (const pair of pairs) {
+    if (pair.id && existingIds.has(pair.id) && !used.has(pair.id)) {
+      used.add(pair.id);
+      await repo.update(pair.id, { question: pair.question, answer: pair.answer });
+      orderedIds.push(pair.id);
+    } else {
+      const created = await repo.create({ ...target, question: pair.question, answer: pair.answer });
+      orderedIds.push(created.id);
+    }
+  }
+
+  if (orderedIds.length > 0) await repo.reorder(target.sectionId, orderedIds);
 }

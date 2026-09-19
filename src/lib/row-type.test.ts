@@ -3,6 +3,7 @@ import { EVENT_INFO_SECTION_LINK_TARGETS } from "@/repositories/event-info-secti
 import {
   fieldsForRowType,
   isScreenRowType,
+  pageFieldsFor,
   ROW_TYPE_GROUPS,
   ROW_TYPES,
   rowTypeLabel,
@@ -61,5 +62,31 @@ describe("the choices", () => {
     expect(rowTypeLabel("text")).toBe("A page of text");
     expect(rowTypeLabel("qa")).toContain("Q&A");
     expect(rowTypeLabel("screen:contacts")).toBe("Contacts");
+  });
+});
+
+describe("pageFieldsFor: what the form shows for the chosen type", () => {
+  it("a text page shows the text box and nothing else", () => {
+    expect(pageFieldsFor("text")).toEqual({ showBody: true, showQaPairs: false, note: null });
+  });
+
+  it("a Q&A page shows the question and answer boxes at once, and hides the text box", () => {
+    expect(pageFieldsFor("qa")).toEqual({ showBody: false, showQaPairs: true, note: null });
+  });
+
+  it.each(EVENT_INFO_SECTION_LINK_TARGETS)("the %s screen shows neither the text box nor the question boxes", (target) => {
+    const fields = pageFieldsFor(`screen:${target}`);
+    expect(fields.showBody).toBe(false);
+    expect(fields.showQaPairs).toBe(false);
+    expect(fields.note).toContain("no page text");
+    expect(fields.note).toContain(rowTypeLabel(`screen:${target}`));
+  });
+
+  it("depends only on the chosen type, and never shows the text box and the question boxes together", () => {
+    for (const type of ROW_TYPES) {
+      const fields = pageFieldsFor(type);
+      expect(fields.showBody && fields.showQaPairs).toBe(false);
+      expect(pageFieldsFor(type)).toEqual(fields);
+    }
   });
 });

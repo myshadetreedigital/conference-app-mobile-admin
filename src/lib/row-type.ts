@@ -59,3 +59,28 @@ export function rowTypeOf(section: {
   if (section.linkTarget) return `screen:${section.linkTarget}`;
   return section.pageStyle === "qa" ? "qa" : "text";
 }
+
+export interface PageFields {
+  /** The page-text box (the row's own page of formatted text). */
+  showBody: boolean;
+  /** The question-and-answer boxes. */
+  showQaPairs: boolean;
+  /** A line of guidance for the chosen type, if any. */
+  note: string | null;
+}
+
+/**
+ * Which inputs the More Info form shows for the type currently chosen in the
+ * dropdown. This runs in the browser as the choice changes, so the form updates
+ * at once — nothing is saved or fetched first, and it works the same for a new
+ * row as for an existing one.
+ */
+export function pageFieldsFor(type: RowType): PageFields {
+  if (type === "text") return { showBody: true, showQaPairs: false, note: null };
+  if (type === "qa") return { showBody: false, showQaPairs: true, note: null };
+  return {
+    showBody: false,
+    showQaPairs: false,
+    note: `This row opens the ${rowTypeLabel(type)} screen, so it has no page text.`,
+  };
+}

@@ -9,10 +9,9 @@ import { SupabaseSpeakerRepository } from "@/repositories/supabase-speaker-repos
 import { SupabaseSponsorRepository } from "@/repositories/supabase-sponsor-repository";
 import { SupabaseSessionRepository } from "@/repositories/supabase-session-repository";
 import { SupabaseEventInfoSectionRepository } from "@/repositories/supabase-event-info-section-repository";
-import { EVENT_INFO_SECTION_ICONS } from "@/repositories/event-info-section-repository";
 import { SupabaseQaEntryRepository } from "@/repositories/supabase-qa-entry-repository";
-import { isScreenRowType, ROW_TYPE_GROUPS, rowTypeLabel, rowTypeOf, type RowType } from "@/lib/row-type";
-import { QaEntriesEditor } from "./qa-entries-editor";
+import { isScreenRowType, rowTypeLabel, rowTypeOf } from "@/lib/row-type";
+import { NewSectionForm, SectionEditForm } from "./section-forms";
 import type { Speaker } from "@/repositories/speaker-repository";
 import { SPEAKER_LINK_FIELDS } from "@/lib/speaker-links";
 import {
@@ -32,38 +31,6 @@ import {
 } from "./actions";
 
 const TIERS = ["diamond", "platinum", "gold", "silver", "bronze", "a_la_carte"] as const;
-
-// What a More Info row does when tapped: open its own page (text, or questions
-// and answers), or jump to one of the app's existing screens.
-function RowTypeSelect({ defaultValue }: { defaultValue: RowType }) {
-  return (
-    <label className="flex items-center gap-2 text-sm">
-      <span className="text-zinc-500">When tapped</span>
-      <select name="rowType" defaultValue={defaultValue} className="rounded border px-3 py-2">
-        {ROW_TYPE_GROUPS.map((group) => (
-          <optgroup key={group.label} label={group.label}>
-            {group.types.map((type) => (
-              <option key={type} value={type}>
-                {rowTypeLabel(type)}
-              </option>
-            ))}
-          </optgroup>
-        ))}
-      </select>
-    </label>
-  );
-}
-
-function FormattingHint() {
-  return (
-    <p className="text-xs text-zinc-500">
-      Plain text works — a blank line starts a new paragraph. You can also use these tags:{" "}
-      <code>&lt;p&gt; &lt;h1&gt;–&lt;h6&gt; &lt;strong&gt; (or &lt;b&gt;) &lt;em&gt; (or &lt;i&gt;) &lt;br&gt; &lt;ol&gt;&lt;li&gt;</code>
-      , and links as <code>&lt;a href=&quot;https://…&quot;&gt;text&lt;/a&gt;</code> (https, mailto: or tel:).
-      Anything else is rejected when you save.
-    </p>
-  );
-}
 
 // Link inputs shared by the add and edit speaker forms. Names match the
 // SPEAKER_LINK_FIELDS keys, which readSpeakerLinks() reads back.
@@ -704,55 +671,13 @@ export default async function EventContentPage({
                       <div className="flex items-center gap-3">
                         <details className="relative" open={openSectionId === section.id}>
                           <summary className="cursor-pointer text-sm underline list-none">Edit</summary>
-                          <form
+                          <SectionEditForm
+                            // Remount when what is saved changes, so the form shows the stored (cleaned-up) version.
+                            key={JSON.stringify([section, sectionEntries.map((e) => [e.id, e.position, e.question, e.answer])])}
                             action={updateEventInfoSectionAction.bind(null, eventId)}
-                            className="mt-3 space-y-2 border-t pt-3"
-                          >
-                            <input type="hidden" name="sectionId" value={section.id} />
-                            <select name="icon" defaultValue={section.icon} className="rounded border px-3 py-2">
-                              {EVENT_INFO_SECTION_ICONS.map((icon) => (
-                                <option key={icon} value={icon}>
-                                  {icon}
-                                </option>
-                              ))}
-                            </select>
-                            <input
-                              name="title"
-                              defaultValue={section.title}
-                              required
-                              className="w-full rounded border px-3 py-2"
-                            />
-                            <RowTypeSelect defaultValue={rowType} />
-                            {rowType === "text" && (
-                              <>
-                                <textarea
-                                  name="body"
-                                  defaultValue={section.body}
-                                  placeholder="Body (optional)"
-                                  rows={6}
-                                  className="w-full rounded border px-3 py-2"
-                                />
-                                <FormattingHint />
-                              </>
-                            )}
-                            {rowType !== "text" && (
-                              <p className="text-xs text-zinc-500">
-                                {rowType === "qa"
-                                  ? "Add and order the questions in the section below."
-                                  : `This row opens the ${rowTypeLabel(rowType)} screen, so it has no page text.`}{" "}
-                                Change the type and save to see that type&apos;s fields.
-                              </p>
-                            )}
-                            <button
-                              type="submit"
-                              className="rounded bg-black px-4 py-2 text-white hover:bg-zinc-800"
-                            >
-                              Save
-                            </button>
-                          </form>
-                          {rowType === "qa" && (
-                            <QaEntriesEditor eventId={eventId} sectionId={section.id} entries={sectionEntries} />
-                          )}
+                            section={{ id: section.id, icon: section.icon, title: section.title, body: section.body, rowType }}
+                            entries={sectionEntries.map((e) => ({ id: e.id, question: e.question, answer: e.answer }))}
+                          />
                         </details>
                         <form action={deleteEventInfoSectionAction.bind(null, eventId)}>
                           <input type="hidden" name="sectionId" value={section.id} />
@@ -766,40 +691,7 @@ export default async function EventContentPage({
                   );
                 })}
               </ul>
-              <form
-                action={createEventInfoSectionAction.bind(null, eventId)}
-                className="space-y-2 border-t pt-4"
-              >
-                <div className="flex items-end gap-2">
-                  <input
-                    name="title"
-                    placeholder="Title"
-                    required
-                    className="flex-1 rounded border px-3 py-2"
-                  />
-                  <select name="icon" className="rounded border px-3 py-2" defaultValue="info">
-                    {EVENT_INFO_SECTION_ICONS.map((icon) => (
-                      <option key={icon} value={icon}>
-                        {icon}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <RowTypeSelect defaultValue="text" />
-                <textarea
-                  name="body"
-                  placeholder="Body (optional) — used by text pages only"
-                  rows={6}
-                  className="w-full rounded border px-3 py-2"
-                />
-                <FormattingHint />
-                <p className="text-xs text-zinc-500">
-                  For a Q&amp;A page, add the row first, then click Edit to add its questions.
-                </p>
-                <button type="submit" className="rounded bg-black px-4 py-2 text-white hover:bg-zinc-800">
-                  Add section
-                </button>
-              </form>
+              <NewSectionForm key={infoSections.length} action={createEventInfoSectionAction.bind(null, eventId)} />
             </section>
           )}
         </div>

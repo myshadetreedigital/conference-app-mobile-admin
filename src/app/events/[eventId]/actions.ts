@@ -20,13 +20,16 @@ import { createSponsor, updateSponsor, deleteSponsor } from "@/services/sponsor-
 import { createSession, deleteSession } from "@/services/session-service";
 import {
   createEventInfoSection,
+  createEventInfoSectionSchema,
   updateEventInfoSection,
+  updateEventInfoSectionSchema,
   deleteEventInfoSection,
 } from "@/services/event-info-section-service";
 import type { SponsorTier } from "@/repositories/sponsor-repository";
 import type { EventInfoSectionIcon } from "@/repositories/event-info-section-repository";
 import { SupabaseQaEntryRepository } from "@/repositories/supabase-qa-entry-repository";
-import { createQaEntry, deleteQaEntry, moveQaEntry, updateQaEntry } from "@/services/qa-entry-service";
+import { saveQaPairs, validateQaPairs } from "@/services/qa-entry-service";
+import { readQaPairs } from "@/lib/qa-pairs";
 import { fieldsForRowType } from "@/lib/row-type";
 import { uploadEventMedia } from "@/lib/upload-event-media";
 import { readSpeakerLinks } from "@/lib/speaker-links";
@@ -243,32 +246,80 @@ export async function deleteSessionAction(eventId: string, formData: FormData) {
   redirect(`/events/${eventId}?tab=sessions`);
 }
 
-export async function createEventInfoSectionAction(eventId: string, formData: FormData) {
-  await requireUser();
-  const supabase = await createClient();
-  const repo = new SupabaseEventInfoSectionRepository(supabase);
-  const result = await createEventInfoSection(repo, eventId, {
+/** What a More Info form action reports back when it doesn't redirect: a message to show beside Save. */
+export type SectionFormState = { error?: string };
+
+/** The stored fields for a submitted More Info form, and its checked Q&A pairs when it is a Q&A page. */
+function readSectionForm(formData: FormData) {
+  const fields = {
     icon: String(formData.get("icon") ?? "info") as EventInfoSectionIcon,
     title: String(formData.get("title") ?? ""),
     body: String(formData.get("body") ?? ""),
     ...fieldsForRowType(String(formData.get("rowType") ?? "")),
-  });
-  if (result.status === "invalid") redirectWithError(eventId, "my-event", firstErrorMessage(result.errors));
+  };
+  const qaPairs = fields.pageStyle === "qa" ? validateQaPairs(readQaPairs(formData)) : null;
+  return { fields, qaPairs };
+}
+
+const qaProblems = (errors: string[]) => errors.slice(0, 3).join(" ");
+
+// The two More Info actions check the row AND its questions before writing
+// anything, so a problem never leaves a half-saved row. On a problem they return
+// the message instead of redirecting, so the form (which keeps everything typed in
+// browser state) stays exactly as it was and nothing has to be typed again.
+
+export async function createEventInfoSectionAction(
+  eventId: string,
+  _previous: SectionFormState,
+  formData: FormData,
+): Promise<SectionFormState> {
+  await requireUser();
+  const { fields, qaPairs } = readSectionForm(formData);
+
+  const check = createEventInfoSectionSchema.safeParse(fields);
+  if (!check.success) return { error: firstErrorMessage(check.error.format()) };
+  if (qaPairs && !qaPairs.ok) return { error: qaProblems(qaPairs.errors) };
+
+  const supabase = await createClient();
+  const result = await createEventInfoSection(new SupabaseEventInfoSectionRepository(supabase), eventId, fields);
+  if (result.status === "invalid") return { error: firstErrorMessage(result.errors) };
+
+  const sectionId = result.section.id;
+  if (qaPairs?.ok) {
+    try {
+      await saveQaPairs(new SupabaseQaEntryRepository(supabase), { eventId, sectionId }, qaPairs.pairs);
+    } catch (error) {
+      redirectWithError(eventId, "my-event", `The row was added, but its questions couldn't be saved (${(error as Error).message}). Open it and save again.`, sectionId);
+    }
+    redirect(`/events/${eventId}?tab=my-event&open=${encodeURIComponent(sectionId)}`);
+  }
   redirect(`/events/${eventId}?tab=my-event`);
 }
 
-export async function updateEventInfoSectionAction(eventId: string, formData: FormData) {
+export async function updateEventInfoSectionAction(
+  eventId: string,
+  _previous: SectionFormState,
+  formData: FormData,
+): Promise<SectionFormState> {
   await requireUser();
-  const supabase = await createClient();
-  const repo = new SupabaseEventInfoSectionRepository(supabase);
   const sectionId = String(formData.get("sectionId") ?? "");
-  const result = await updateEventInfoSection(repo, sectionId, {
-    icon: String(formData.get("icon") ?? "info") as EventInfoSectionIcon,
-    title: String(formData.get("title") ?? ""),
-    body: String(formData.get("body") ?? ""),
-    ...fieldsForRowType(String(formData.get("rowType") ?? "")),
-  });
-  if (result.status === "invalid") redirectWithError(eventId, "my-event", firstErrorMessage(result.errors), sectionId);
+  const { fields, qaPairs } = readSectionForm(formData);
+
+  const check = updateEventInfoSectionSchema.safeParse(fields);
+  if (!check.success) return { error: firstErrorMessage(check.error.format()) };
+  if (qaPairs && !qaPairs.ok) return { error: qaProblems(qaPairs.errors) };
+
+  const supabase = await createClient();
+  const result = await updateEventInfoSection(new SupabaseEventInfoSectionRepository(supabase), sectionId, fields);
+  if (result.status === "invalid") return { error: firstErrorMessage(result.errors) };
+
+  if (qaPairs?.ok) {
+    try {
+      await saveQaPairs(new SupabaseQaEntryRepository(supabase), { eventId, sectionId }, qaPairs.pairs);
+    } catch (error) {
+      redirectWithError(eventId, "my-event", `The row was saved, but its questions couldn't be (${(error as Error).message}). Save again.`, sectionId);
+    }
+  }
   redirect(`/events/${eventId}?tab=my-event&open=${encodeURIComponent(sectionId)}`);
 }
 
@@ -278,56 +329,4 @@ export async function deleteEventInfoSectionAction(eventId: string, formData: Fo
   const repo = new SupabaseEventInfoSectionRepository(supabase);
   await deleteEventInfoSection(repo, String(formData.get("sectionId") ?? ""));
   redirect(`/events/${eventId}?tab=my-event`);
-}
-
-// ---- Q&A entries on a More Info row whose page style is "qa" -------------
-// Each action returns to the More Info tab with that row's editor left open.
-
-function backToRow(eventId: string, sectionId: string): never {
-  redirect(`/events/${eventId}?tab=my-event&open=${encodeURIComponent(sectionId)}`);
-}
-
-export async function createQaEntryAction(eventId: string, formData: FormData) {
-  await requireUser();
-  const supabase = await createClient();
-  const repo = new SupabaseQaEntryRepository(supabase);
-  const sectionId = String(formData.get("sectionId") ?? "");
-  const result = await createQaEntry(
-    repo,
-    { eventId, sectionId },
-    { question: String(formData.get("question") ?? ""), answer: String(formData.get("answer") ?? "") },
-  );
-  if (result.status === "invalid") redirectWithError(eventId, "my-event", firstErrorMessage(result.errors), sectionId);
-  backToRow(eventId, sectionId);
-}
-
-export async function updateQaEntryAction(eventId: string, formData: FormData) {
-  await requireUser();
-  const supabase = await createClient();
-  const repo = new SupabaseQaEntryRepository(supabase);
-  const sectionId = String(formData.get("sectionId") ?? "");
-  const result = await updateQaEntry(repo, String(formData.get("entryId") ?? ""), {
-    question: String(formData.get("question") ?? ""),
-    answer: String(formData.get("answer") ?? ""),
-  });
-  if (result.status === "invalid") redirectWithError(eventId, "my-event", firstErrorMessage(result.errors), sectionId);
-  backToRow(eventId, sectionId);
-}
-
-export async function deleteQaEntryAction(eventId: string, formData: FormData) {
-  await requireUser();
-  const supabase = await createClient();
-  const repo = new SupabaseQaEntryRepository(supabase);
-  await deleteQaEntry(repo, String(formData.get("entryId") ?? ""));
-  backToRow(eventId, String(formData.get("sectionId") ?? ""));
-}
-
-export async function moveQaEntryAction(eventId: string, formData: FormData) {
-  await requireUser();
-  const supabase = await createClient();
-  const repo = new SupabaseQaEntryRepository(supabase);
-  const sectionId = String(formData.get("sectionId") ?? "");
-  const direction = formData.get("direction") === "up" ? "up" : "down";
-  await moveQaEntry(repo, { eventId, sectionId }, String(formData.get("entryId") ?? ""), direction);
-  backToRow(eventId, sectionId);
 }
