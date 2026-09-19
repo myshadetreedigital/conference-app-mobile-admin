@@ -18,7 +18,7 @@ const hostWithoutWww = (url: URL) => url.hostname.toLowerCase().replace(/^www\./
  * can't pass for a trusted link.
  */
 export function findBadLink(body: string): string | null {
-  for (const match of body.matchAll(/\[([^\]]*)\]\(([^)]*)\)/g)) {
+  for (const match of body.matchAll(/\[([^\]]*)\]\(((?:[^()]|\([^()]*\))*)\)/g)) {
     const text = match[1].trim();
     const target = match[2].trim();
 

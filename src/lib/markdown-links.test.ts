@@ -12,6 +12,7 @@ describe("findBadLink", () => {
     "[Click here](https://example.com)",
     "Two links: [a](https://a.example.com) and [b](https://b.example.com).",
     "A bare URL is just text: https://example.com",
+    "[Wikipedia](https://en.wikipedia.org/wiki/Foo_(bar))", // one level of parentheses in a URL
   ])("accepts %j", (body) => {
     expect(findBadLink(body)).toBeNull();
   });
@@ -33,6 +34,11 @@ describe("findBadLink", () => {
     ["bad link after a good one", "[ok](https://example.com) then [bad](http://evil.example.com)"],
   ])("rejects %s", (_name, body) => {
     expect(findBadLink(body)).not.toBeNull();
+  });
+
+  it("checks the whole target when it contains parentheses", () => {
+    expect(findBadLink("[a](javascript:alert(1))")).not.toBeNull();
+    expect(findBadLink("[a](http://example.com/x_(y))")).not.toBeNull();
   });
 
   it("rejects link text that names a different site than the destination", () => {
