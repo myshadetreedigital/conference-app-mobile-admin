@@ -26,6 +26,7 @@ export class InMemoryEventInfoSectionRepository implements EventInfoSectionRepos
     section.title = data.title;
     section.body = data.body;
     section.linkTarget = data.linkTarget;
+    section.pageStyle = data.pageStyle;
   }
 
   async delete(sectionId: string): Promise<void> {

@@ -35,11 +35,15 @@ export interface FakeResult {
  * This checks the repository's request shape, not that Postgres accepts it —
  * schema, constraints, and RLS are not exercised here.
  */
-export function createFakeSupabase(result: FakeResult = {}) {
+export function createFakeSupabase(scripted: FakeResult | FakeResult[] = {}) {
   const calls: RecordedCall[] = [];
-  const resolved = { data: result.data ?? null, error: result.error ?? null };
+  // A list scripts one result per call, in order (the last repeats), for repository
+  // methods that make several queries; a single result answers every call.
+  const results = Array.isArray(scripted) ? scripted : [scripted];
+  const resolve = (result: FakeResult) => ({ data: result.data ?? null, error: result.error ?? null });
 
   function startCall(root: "from" | "rpc", target: string, params?: unknown): object {
+    const resolved = resolve(results[Math.min(calls.length, results.length - 1)]);
     const ops: RecordedOp[] = [];
     calls.push({
       root,

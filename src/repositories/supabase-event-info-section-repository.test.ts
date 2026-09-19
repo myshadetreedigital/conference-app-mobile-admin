@@ -9,6 +9,7 @@ const row = {
   title: "Getting here",
   body: "Fly to ATL",
   link_target: null,
+  page_style: "text",
 };
 const expected = {
   id: "i-1",
@@ -17,6 +18,7 @@ const expected = {
   title: "Getting here",
   body: "Fly to ATL",
   linkTarget: null,
+  pageStyle: "text",
 };
 
 describe("SupabaseEventInfoSectionRepository", () => {
@@ -45,6 +47,7 @@ describe("SupabaseEventInfoSectionRepository", () => {
       title: "Getting here",
       body: "Fly to ATL",
       linkTarget: null,
+      pageStyle: "text",
     });
     expect(fake.only().arg("insert")).toEqual({
       event_id: "evt-1",
@@ -52,6 +55,7 @@ describe("SupabaseEventInfoSectionRepository", () => {
       title: "Getting here",
       body: "Fly to ATL",
       link_target: null,
+      page_style: "text",
     });
     expect(section).toEqual(expected);
   });
@@ -63,8 +67,15 @@ describe("SupabaseEventInfoSectionRepository", () => {
       title: "T",
       body: "B",
       linkTarget: null,
+      pageStyle: "text",
     });
-    expect(fake.only().arg("update")).toEqual({ icon: "map", title: "T", body: "B", link_target: null });
+    expect(fake.only().arg("update")).toEqual({
+      icon: "map",
+      title: "T",
+      body: "B",
+      link_target: null,
+      page_style: "text",
+    });
     expect(fake.only().ops.find((o) => o.method === "eq")?.args).toEqual(["id", "i-1"]);
   });
 
@@ -80,6 +91,7 @@ describe("SupabaseEventInfoSectionRepository", () => {
       title: "Speakers",
       body: "",
       linkTarget: "speakers",
+      pageStyle: "text",
     });
     expect(createFake.only().arg("insert")).toMatchObject({ link_target: "speakers" });
 
@@ -89,8 +101,42 @@ describe("SupabaseEventInfoSectionRepository", () => {
       title: "Speakers",
       body: "",
       linkTarget: "speakers",
+      pageStyle: "text",
     });
     expect(updateFake.only().arg("update")).toMatchObject({ link_target: "speakers" });
+  });
+
+  it("maps a Q&A row's page style, and writes it on create and update", async () => {
+    const readFake = createFakeSupabase({ data: [{ ...row, title: "FAQ", page_style: "qa" }] });
+    const [section] = await new SupabaseEventInfoSectionRepository(readFake.client).listByEvent("evt-1");
+    expect(section.pageStyle).toBe("qa");
+
+    const createFake = createFakeSupabase({ data: row });
+    await new SupabaseEventInfoSectionRepository(createFake.client).create({
+      eventId: "evt-1",
+      icon: "info",
+      title: "FAQ",
+      body: "",
+      linkTarget: null,
+      pageStyle: "qa",
+    });
+    expect(createFake.only().arg("insert")).toMatchObject({ page_style: "qa" });
+
+    const updateFake = createFakeSupabase();
+    await new SupabaseEventInfoSectionRepository(updateFake.client).update("i-1", {
+      icon: "info",
+      title: "FAQ",
+      body: "",
+      linkTarget: null,
+      pageStyle: "qa",
+    });
+    expect(updateFake.only().arg("update")).toMatchObject({ page_style: "qa" });
+  });
+
+  it.each([undefined, null, "", "text", "unknown"])("maps page_style %j to a text page", async (pageStyle) => {
+    const fake = createFakeSupabase({ data: [{ ...row, page_style: pageStyle }] });
+    const [section] = await new SupabaseEventInfoSectionRepository(fake.client).listByEvent("evt-1");
+    expect(section.pageStyle).toBe("text");
   });
 
   it("maps a missing link_target column to null", async () => {
@@ -112,9 +158,9 @@ describe("SupabaseEventInfoSectionRepository", () => {
     ["listByEvent", (r: SupabaseEventInfoSectionRepository) => r.listByEvent("e")],
     [
       "create",
-      (r: SupabaseEventInfoSectionRepository) => r.create({ eventId: "e", icon: "info", title: "t", body: "", linkTarget: null }),
+      (r: SupabaseEventInfoSectionRepository) => r.create({ eventId: "e", icon: "info", title: "t", body: "", linkTarget: null, pageStyle: "text" }),
     ],
-    ["update", (r: SupabaseEventInfoSectionRepository) => r.update("i", { icon: "info", title: "t", body: "", linkTarget: null })],
+    ["update", (r: SupabaseEventInfoSectionRepository) => r.update("i", { icon: "info", title: "t", body: "", linkTarget: null, pageStyle: "text" })],
     ["delete", (r: SupabaseEventInfoSectionRepository) => r.delete("i")],
   ])("%s throws the Supabase error", async (_name, run) => {
     const error = { message: "boom" };

@@ -9,11 +9,10 @@ import { SupabaseSpeakerRepository } from "@/repositories/supabase-speaker-repos
 import { SupabaseSponsorRepository } from "@/repositories/supabase-sponsor-repository";
 import { SupabaseSessionRepository } from "@/repositories/supabase-session-repository";
 import { SupabaseEventInfoSectionRepository } from "@/repositories/supabase-event-info-section-repository";
-import {
-  EVENT_INFO_SECTION_ICONS,
-  EVENT_INFO_SECTION_LINK_TARGETS,
-  type EventInfoSectionLinkTarget,
-} from "@/repositories/event-info-section-repository";
+import { EVENT_INFO_SECTION_ICONS } from "@/repositories/event-info-section-repository";
+import { SupabaseQaEntryRepository } from "@/repositories/supabase-qa-entry-repository";
+import { isScreenRowType, ROW_TYPE_GROUPS, rowTypeLabel, rowTypeOf, type RowType } from "@/lib/row-type";
+import { QaEntriesEditor } from "./qa-entries-editor";
 import type { Speaker } from "@/repositories/speaker-repository";
 import { SPEAKER_LINK_FIELDS } from "@/lib/speaker-links";
 import {
@@ -34,18 +33,21 @@ import {
 
 const TIERS = ["diamond", "platinum", "gold", "silver", "bronze", "a_la_carte"] as const;
 
-// What a More Info row does when tapped: open its own page of text, or
-// jump to an existing screen. "" (the text option) is stored as null.
-function LinkTargetSelect({ defaultValue }: { defaultValue: EventInfoSectionLinkTarget | null }) {
+// What a More Info row does when tapped: open its own page (text, or questions
+// and answers), or jump to one of the app's existing screens.
+function RowTypeSelect({ defaultValue }: { defaultValue: RowType }) {
   return (
     <label className="flex items-center gap-2 text-sm">
       <span className="text-zinc-500">When tapped</span>
-      <select name="linkTarget" defaultValue={defaultValue ?? ""} className="rounded border px-3 py-2">
-        <option value="">Opens a page of text (the body below)</option>
-        {EVENT_INFO_SECTION_LINK_TARGETS.map((target) => (
-          <option key={target} value={target}>
-            Opens the {target} screen
-          </option>
+      <select name="rowType" defaultValue={defaultValue} className="rounded border px-3 py-2">
+        {ROW_TYPE_GROUPS.map((group) => (
+          <optgroup key={group.label} label={group.label}>
+            {group.types.map((type) => (
+              <option key={type} value={type}>
+                {rowTypeLabel(type)}
+              </option>
+            ))}
+          </optgroup>
         ))}
       </select>
     </label>
@@ -122,10 +124,10 @@ export default async function EventContentPage({
   searchParams,
 }: {
   params: Promise<{ eventId: string }>;
-  searchParams: Promise<{ error?: string; tab?: string }>;
+  searchParams: Promise<{ error?: string; tab?: string; open?: string }>;
 }) {
   const { eventId } = await params;
-  const { error, tab: rawTab } = await searchParams;
+  const { error, tab: rawTab, open: openSectionId } = await searchParams;
   const activeTab: TabKey = TABS.some((t) => t.key === rawTab) ? (rawTab as TabKey) : "details";
   const user = await requireUser();
   const supabase = await createClient();
@@ -143,12 +145,16 @@ export default async function EventContentPage({
   const sponsorRepo = new SupabaseSponsorRepository(supabase);
   const sessionRepo = new SupabaseSessionRepository(supabase);
   const infoSectionRepo = new SupabaseEventInfoSectionRepository(supabase);
+  const qaRepo = new SupabaseQaEntryRepository(supabase);
 
-  const [speakers, sponsors, sessions, infoSections] = await Promise.all([
+  const [speakers, sponsors, sessions, infoSections, qaEntries] = await Promise.all([
     speakerRepo.listByEvent(eventId),
     sponsorRepo.listByEvent(eventId),
     sessionRepo.listByEvent(eventId),
     infoSectionRepo.listByEvent(eventId),
+    // Before migration 0019 has been run the Q&A table doesn't exist; the rest
+    // of the page should still load.
+    qaRepo.listByEvent(eventId).catch(() => []),
   ]);
 
   return (
@@ -677,18 +683,24 @@ export default async function EventContentPage({
                 {infoSections.length === 0 && (
                   <li className="text-sm text-zinc-500">No sections yet.</li>
                 )}
-                {infoSections.map((section) => (
+                {infoSections.map((section) => {
+                  const rowType = rowTypeOf(section);
+                  const sectionEntries = qaEntries.filter((e) => e.sectionId === section.id);
+                  return (
                   <li key={section.id} className="rounded border px-4 py-3">
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="font-medium">{section.title}</p>
                         <p className="text-xs text-zinc-500">
                           {section.icon}
-                          {section.linkTarget ? ` · opens the ${section.linkTarget} screen` : ""}
+                          {isScreenRowType(rowType) ? ` · opens the ${rowTypeLabel(rowType)} screen` : ""}
+                          {rowType === "qa"
+                            ? ` · Q&A page (${sectionEntries.length} ${sectionEntries.length === 1 ? "question" : "questions"})`
+                            : ""}
                         </p>
                       </div>
                       <div className="flex items-center gap-3">
-                        <details className="relative">
+                        <details className="relative" open={openSectionId === section.id}>
                           <summary className="cursor-pointer text-sm underline list-none">Edit</summary>
                           <form
                             action={updateEventInfoSectionAction.bind(null, eventId)}
@@ -708,15 +720,27 @@ export default async function EventContentPage({
                               required
                               className="w-full rounded border px-3 py-2"
                             />
-                            <LinkTargetSelect defaultValue={section.linkTarget} />
-                            <textarea
-                              name="body"
-                              defaultValue={section.body}
-                              placeholder="Body (optional)"
-                              rows={6}
-                              className="w-full rounded border px-3 py-2"
-                            />
-                            <FormattingHint />
+                            <RowTypeSelect defaultValue={rowType} />
+                            {rowType === "text" && (
+                              <>
+                                <textarea
+                                  name="body"
+                                  defaultValue={section.body}
+                                  placeholder="Body (optional)"
+                                  rows={6}
+                                  className="w-full rounded border px-3 py-2"
+                                />
+                                <FormattingHint />
+                              </>
+                            )}
+                            {rowType !== "text" && (
+                              <p className="text-xs text-zinc-500">
+                                {rowType === "qa"
+                                  ? "Add and order the questions in the section below."
+                                  : `This row opens the ${rowTypeLabel(rowType)} screen, so it has no page text.`}{" "}
+                                Change the type and save to see that type&apos;s fields.
+                              </p>
+                            )}
                             <button
                               type="submit"
                               className="rounded bg-black px-4 py-2 text-white hover:bg-zinc-800"
@@ -724,6 +748,9 @@ export default async function EventContentPage({
                               Save
                             </button>
                           </form>
+                          {rowType === "qa" && (
+                            <QaEntriesEditor eventId={eventId} sectionId={section.id} entries={sectionEntries} />
+                          )}
                         </details>
                         <form action={deleteEventInfoSectionAction.bind(null, eventId)}>
                           <input type="hidden" name="sectionId" value={section.id} />
@@ -734,7 +761,8 @@ export default async function EventContentPage({
                       </div>
                     </div>
                   </li>
-                ))}
+                  );
+                })}
               </ul>
               <form
                 action={createEventInfoSectionAction.bind(null, eventId)}
@@ -755,14 +783,17 @@ export default async function EventContentPage({
                     ))}
                   </select>
                 </div>
-                <LinkTargetSelect defaultValue={null} />
+                <RowTypeSelect defaultValue="text" />
                 <textarea
                   name="body"
-                  placeholder="Body (optional)"
+                  placeholder="Body (optional) — used by text pages only"
                   rows={6}
                   className="w-full rounded border px-3 py-2"
                 />
                 <FormattingHint />
+                <p className="text-xs text-zinc-500">
+                  For a Q&amp;A page, add the row first, then click Edit to add its questions.
+                </p>
                 <button type="submit" className="rounded bg-black px-4 py-2 text-white hover:bg-zinc-800">
                   Add section
                 </button>

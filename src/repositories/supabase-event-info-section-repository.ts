@@ -15,6 +15,7 @@ interface EventInfoSectionRow {
   title: string;
   body: string;
   link_target: string | null;
+  page_style?: string | null;
 }
 
 function toEventInfoSection(row: EventInfoSectionRow): EventInfoSection {
@@ -25,6 +26,7 @@ function toEventInfoSection(row: EventInfoSectionRow): EventInfoSection {
     title: row.title,
     body: row.body,
     linkTarget: (row.link_target as EventInfoSectionLinkTarget | null) ?? null,
+    pageStyle: row.page_style === "qa" ? "qa" : "text",
   };
 }
 
@@ -52,6 +54,7 @@ export class SupabaseEventInfoSectionRepository implements EventInfoSectionRepos
         title: input.title,
         body: input.body,
         link_target: input.linkTarget,
+        page_style: input.pageStyle,
       })
       .select()
       .single();
@@ -62,7 +65,13 @@ export class SupabaseEventInfoSectionRepository implements EventInfoSectionRepos
   async update(sectionId: string, data: UpdateEventInfoSectionData): Promise<void> {
     const { error } = await this.supabase
       .from("event_info_sections")
-      .update({ icon: data.icon, title: data.title, body: data.body, link_target: data.linkTarget })
+      .update({
+        icon: data.icon,
+        title: data.title,
+        body: data.body,
+        link_target: data.linkTarget,
+        page_style: data.pageStyle,
+      })
       .eq("id", sectionId);
     if (error) throw error;
   }

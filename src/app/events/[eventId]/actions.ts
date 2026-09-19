@@ -24,10 +24,10 @@ import {
   deleteEventInfoSection,
 } from "@/services/event-info-section-service";
 import type { SponsorTier } from "@/repositories/sponsor-repository";
-import type {
-  EventInfoSectionIcon,
-  EventInfoSectionLinkTarget,
-} from "@/repositories/event-info-section-repository";
+import type { EventInfoSectionIcon } from "@/repositories/event-info-section-repository";
+import { SupabaseQaEntryRepository } from "@/repositories/supabase-qa-entry-repository";
+import { createQaEntry, deleteQaEntry, moveQaEntry, updateQaEntry } from "@/services/qa-entry-service";
+import { fieldsForRowType } from "@/lib/row-type";
 import { uploadEventMedia } from "@/lib/upload-event-media";
 import { readSpeakerLinks } from "@/lib/speaker-links";
 
@@ -102,8 +102,9 @@ function firstErrorMessage(errors: object): string {
   );
 }
 
-function redirectWithError(eventId: string, tab: string, message: string): never {
-  redirect(`/events/${eventId}?tab=${tab}&error=${encodeURIComponent(message)}`);
+function redirectWithError(eventId: string, tab: string, message: string, openSectionId?: string): never {
+  const open = openSectionId ? `&open=${encodeURIComponent(openSectionId)}` : "";
+  redirect(`/events/${eventId}?tab=${tab}${open}&error=${encodeURIComponent(message)}`);
 }
 
 export async function createSpeakerAction(eventId: string, formData: FormData) {
@@ -250,7 +251,7 @@ export async function createEventInfoSectionAction(eventId: string, formData: Fo
     icon: String(formData.get("icon") ?? "info") as EventInfoSectionIcon,
     title: String(formData.get("title") ?? ""),
     body: String(formData.get("body") ?? ""),
-    linkTarget: (String(formData.get("linkTarget") ?? "") || null) as EventInfoSectionLinkTarget | null,
+    ...fieldsForRowType(String(formData.get("rowType") ?? "")),
   });
   if (result.status === "invalid") redirectWithError(eventId, "my-event", firstErrorMessage(result.errors));
   redirect(`/events/${eventId}?tab=my-event`);
@@ -265,10 +266,10 @@ export async function updateEventInfoSectionAction(eventId: string, formData: Fo
     icon: String(formData.get("icon") ?? "info") as EventInfoSectionIcon,
     title: String(formData.get("title") ?? ""),
     body: String(formData.get("body") ?? ""),
-    linkTarget: (String(formData.get("linkTarget") ?? "") || null) as EventInfoSectionLinkTarget | null,
+    ...fieldsForRowType(String(formData.get("rowType") ?? "")),
   });
-  if (result.status === "invalid") redirectWithError(eventId, "my-event", firstErrorMessage(result.errors));
-  redirect(`/events/${eventId}?tab=my-event`);
+  if (result.status === "invalid") redirectWithError(eventId, "my-event", firstErrorMessage(result.errors), sectionId);
+  redirect(`/events/${eventId}?tab=my-event&open=${encodeURIComponent(sectionId)}`);
 }
 
 export async function deleteEventInfoSectionAction(eventId: string, formData: FormData) {
@@ -277,4 +278,56 @@ export async function deleteEventInfoSectionAction(eventId: string, formData: Fo
   const repo = new SupabaseEventInfoSectionRepository(supabase);
   await deleteEventInfoSection(repo, String(formData.get("sectionId") ?? ""));
   redirect(`/events/${eventId}?tab=my-event`);
+}
+
+// ---- Q&A entries on a More Info row whose page style is "qa" -------------
+// Each action returns to the More Info tab with that row's editor left open.
+
+function backToRow(eventId: string, sectionId: string): never {
+  redirect(`/events/${eventId}?tab=my-event&open=${encodeURIComponent(sectionId)}`);
+}
+
+export async function createQaEntryAction(eventId: string, formData: FormData) {
+  await requireUser();
+  const supabase = await createClient();
+  const repo = new SupabaseQaEntryRepository(supabase);
+  const sectionId = String(formData.get("sectionId") ?? "");
+  const result = await createQaEntry(
+    repo,
+    { eventId, sectionId },
+    { question: String(formData.get("question") ?? ""), answer: String(formData.get("answer") ?? "") },
+  );
+  if (result.status === "invalid") redirectWithError(eventId, "my-event", firstErrorMessage(result.errors), sectionId);
+  backToRow(eventId, sectionId);
+}
+
+export async function updateQaEntryAction(eventId: string, formData: FormData) {
+  await requireUser();
+  const supabase = await createClient();
+  const repo = new SupabaseQaEntryRepository(supabase);
+  const sectionId = String(formData.get("sectionId") ?? "");
+  const result = await updateQaEntry(repo, String(formData.get("entryId") ?? ""), {
+    question: String(formData.get("question") ?? ""),
+    answer: String(formData.get("answer") ?? ""),
+  });
+  if (result.status === "invalid") redirectWithError(eventId, "my-event", firstErrorMessage(result.errors), sectionId);
+  backToRow(eventId, sectionId);
+}
+
+export async function deleteQaEntryAction(eventId: string, formData: FormData) {
+  await requireUser();
+  const supabase = await createClient();
+  const repo = new SupabaseQaEntryRepository(supabase);
+  await deleteQaEntry(repo, String(formData.get("entryId") ?? ""));
+  backToRow(eventId, String(formData.get("sectionId") ?? ""));
+}
+
+export async function moveQaEntryAction(eventId: string, formData: FormData) {
+  await requireUser();
+  const supabase = await createClient();
+  const repo = new SupabaseQaEntryRepository(supabase);
+  const sectionId = String(formData.get("sectionId") ?? "");
+  const direction = formData.get("direction") === "up" ? "up" : "down";
+  await moveQaEntry(repo, { eventId, sectionId }, String(formData.get("entryId") ?? ""), direction);
+  backToRow(eventId, sectionId);
 }

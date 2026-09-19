@@ -20,12 +20,20 @@ export const EVENT_INFO_SECTION_ICONS = [
 
 export type EventInfoSectionIcon = (typeof EVENT_INFO_SECTION_ICONS)[number];
 
-// Existing mobile screens a row can open instead of showing a page of
-// text — kept in sync with the link_target CHECK in the database and the
-// mobile app's More Info screen.
-export const EVENT_INFO_SECTION_LINK_TARGETS = ["speakers"] as const;
+// Existing mobile screens (tabs) a row can open instead of showing its own
+// page — kept in sync with the link_target CHECK in the database and the
+// mobile app's LINK_TARGET_ROUTES (src/lib/more-info.ts). Home and More Info
+// itself are deliberately not offered.
+export const EVENT_INFO_SECTION_LINK_TARGETS = ["speakers", "schedule", "sponsors", "contacts"] as const;
 
 export type EventInfoSectionLinkTarget = (typeof EVENT_INFO_SECTION_LINK_TARGETS)[number];
+
+// How a row's own page is laid out: formatted text, or numbered Q&A pairs on
+// alternating bands (see qa-entry-repository.ts). Kept in sync with the
+// page_style CHECK in the database.
+export const EVENT_INFO_SECTION_PAGE_STYLES = ["text", "qa"] as const;
+
+export type EventInfoSectionPageStyle = (typeof EVENT_INFO_SECTION_PAGE_STYLES)[number];
 
 export interface EventInfoSection {
   id: string;
@@ -33,8 +41,9 @@ export interface EventInfoSection {
   icon: EventInfoSectionIcon;
   title: string;
   body: string;
-  /** Null means a normal page of text. */
+  /** Null means the row opens its own page (laid out per pageStyle). */
   linkTarget: EventInfoSectionLinkTarget | null;
+  pageStyle: EventInfoSectionPageStyle;
 }
 
 export interface NewEventInfoSection {
@@ -43,6 +52,7 @@ export interface NewEventInfoSection {
   title: string;
   body: string;
   linkTarget: EventInfoSectionLinkTarget | null;
+  pageStyle: EventInfoSectionPageStyle;
 }
 
 export interface UpdateEventInfoSectionData {
@@ -50,6 +60,7 @@ export interface UpdateEventInfoSectionData {
   title: string;
   body: string;
   linkTarget: EventInfoSectionLinkTarget | null;
+  pageStyle: EventInfoSectionPageStyle;
 }
 
 export interface EventInfoSectionRepository {
