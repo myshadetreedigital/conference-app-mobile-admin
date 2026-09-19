@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { findBadLink } from "@/lib/markdown-links";
+import { htmlField } from "./html-field";
 import type { QaEntry, QaEntryRepository } from "@/repositories/qa-entry-repository";
 
 export const MAX_QUESTION_LENGTH = 300;
@@ -14,17 +14,10 @@ const questionSchema = z
   .max(MAX_QUESTION_LENGTH, `Question is too long (${MAX_QUESTION_LENGTH} characters max).`)
   .transform((q) => q.replace(/\s+/g, " "));
 
-// Answers may use the small formatting subset (**bold**, [link](https://…));
-// every link must be a safe https link (see src/lib/markdown-links.ts).
-const answerSchema = z
-  .string()
-  .trim()
-  .max(MAX_ANSWER_LENGTH, `Answer is too long (${MAX_ANSWER_LENGTH} characters max).`)
-  .superRefine((answer, ctx) => {
-    const problem = findBadLink(answer);
-    if (problem) ctx.addIssue({ code: "custom", message: problem });
-  })
-  .default("");
+// Answers use the same small subset of HTML as text pages (see
+// src/lib/html-content.ts): checked and rewritten into a canonical form when
+// submitted, or rejected with a readable error.
+const answerSchema = htmlField(MAX_ANSWER_LENGTH);
 
 export const qaEntrySchema = z.object({ question: questionSchema, answer: answerSchema });
 

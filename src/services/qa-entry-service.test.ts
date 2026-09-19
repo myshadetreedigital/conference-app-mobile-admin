@@ -37,14 +37,14 @@ describe("createQaEntry", () => {
     ]);
   });
 
-  it("trims, collapses whitespace in the question, and keeps the answer's line breaks", async () => {
+  it("trims and collapses whitespace in the question, and stores the answer as clean HTML", async () => {
     const repo = new InMemoryQaEntryRepository();
     const result = await createQaEntry(repo, target, {
       question: "  Is   there\n parking?  ",
       answer: "  Yes.\n\nSee the map.  ",
     });
     expect(result.status === "created" && result.entry.question).toBe("Is there parking?");
-    expect(result.status === "created" && result.entry.answer).toBe("Yes.\n\nSee the map.");
+    expect(result.status === "created" && result.entry.answer).toBe("<p>Yes.</p>\n\n<p>See the map.</p>");
   });
 
   it("allows an empty answer", async () => {
@@ -53,11 +53,14 @@ describe("createQaEntry", () => {
     expect(result.status === "created" && result.entry.answer).toBe("");
   });
 
-  it("accepts formatting and safe https links in the answer", async () => {
+  it("accepts formatting and safe links in the answer, and stores them in canonical form", async () => {
     const repo = new InMemoryQaEntryRepository();
-    const answer = "Download the **Opticon app** for [Android](https://play.google.com/store/x) or [iOS](https://apps.apple.com/x).";
+    const answer =
+      'Download the <b>Opticon app</b> for <a href="https://play.google.com/store/x">Android</a> or <a href="https://apps.apple.com/x">iOS</a>. Questions? Email <a href="mailto:opticon@kcimanagement.com">opticon@kcimanagement.com</a>.';
     const result = await createQaEntry(repo, target, { question: "Is there an app?", answer });
-    expect(result.status).toBe("created");
+    expect(result.status === "created" && result.entry.answer).toBe(
+      '<p>Download the <strong>Opticon app</strong> for <a href="https://play.google.com/store/x">Android</a> or <a href="https://apps.apple.com/x">iOS</a>. Questions? Email <a href="mailto:opticon@kcimanagement.com">opticon@kcimanagement.com</a>.</p>',
+    );
   });
 
   it.each([
@@ -65,10 +68,13 @@ describe("createQaEntry", () => {
     ["a blank question", { question: "   ", answer: "A." }, "question"],
     ["a too-long question", { question: "q".repeat(MAX_QUESTION_LENGTH + 1), answer: "A." }, "question"],
     ["a too-long answer", { question: "Q?", answer: "a".repeat(MAX_ANSWER_LENGTH + 1) }, "answer"],
-    ["an http link", { question: "Q?", answer: "[a](http://example.com)" }, "answer"],
-    ["a javascript link", { question: "Q?", answer: "[a](javascript:alert(1))" }, "answer"],
-    ["a mailto link", { question: "Q?", answer: "[a](mailto:x@example.com)" }, "answer"],
-    ["a look-alike link text", { question: "Q?", answer: "[paypal.com](https://evil.example.com)" }, "answer"],
+    ["an http link", { question: "Q?", answer: '<a href="http://example.com">a</a>' }, "answer"],
+    ["a javascript link", { question: "Q?", answer: '<a href="javascript:alert(1)">a</a>' }, "answer"],
+    ["an email link with a subject", { question: "Q?", answer: '<a href="mailto:x@example.com?subject=hi">a</a>' }, "answer"],
+    ["a look-alike link text", { question: "Q?", answer: '<a href="https://evil.example.com">paypal.com</a>' }, "answer"],
+    ["a script tag", { question: "Q?", answer: "<script>alert(1)</script>" }, "answer"],
+    ["an image", { question: "Q?", answer: '<img src="https://example.com/x.png">' }, "answer"],
+    ["a div", { question: "Q?", answer: "<div>x</div>" }, "answer"],
   ] as const)("rejects %s and stores nothing", async (_name, input, field) => {
     const repo = new InMemoryQaEntryRepository();
     const result = await createQaEntry(repo, target, input);
@@ -85,14 +91,14 @@ describe("updateQaEntry", () => {
     const result = await updateQaEntry(repo, id, { question: "New?", answer: "New answer." });
     expect(result.status).toBe("updated");
     const [entry] = await repo.listByEvent("evt-1");
-    expect([entry.question, entry.answer]).toEqual(["New?", "New answer."]);
+    expect([entry.question, entry.answer]).toEqual(["New?", "<p>New answer.</p>"]);
   });
 
   it("rejects invalid input and leaves the entry unchanged", async () => {
     const repo = new InMemoryQaEntryRepository();
     const [id] = await seed(repo, ["Keep?"]);
     expect((await updateQaEntry(repo, id, { question: " ", answer: "" })).status).toBe("invalid");
-    expect((await updateQaEntry(repo, id, { question: "Q?", answer: "[a](http://x.example.com)" })).status).toBe(
+    expect((await updateQaEntry(repo, id, { question: "Q?", answer: '<a href="http://x.example.com">a</a>' })).status).toBe(
       "invalid",
     );
     expect((await repo.listByEvent("evt-1"))[0].question).toBe("Keep?");

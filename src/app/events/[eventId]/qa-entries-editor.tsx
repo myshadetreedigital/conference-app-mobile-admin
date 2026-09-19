@@ -24,8 +24,10 @@ export function QaEntriesEditor({
       <div>
         <p className="text-sm font-medium">Questions and answers</p>
         <p className="text-xs text-zinc-500">
-          Shown in this order, numbered, each pair on an alternating band. Questions are plain text;
-          answers may use **bold** and [link text](https://example.com) — links must be https://.
+          Shown in this order, numbered, each pair on an alternating band. Questions are plain text.
+          Answers can use plain text (a blank line starts a new paragraph) or the tags &lt;strong&gt;,
+          &lt;em&gt;, &lt;br&gt;, &lt;ol&gt;&lt;li&gt; and &lt;a href=&quot;https://…&quot;&gt; (https, mailto: or
+          tel:). Anything else is rejected when you save.
         </p>
       </div>
 

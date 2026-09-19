@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { findBadLink, MAX_SECTION_BODY_LENGTH } from "@/lib/markdown-links";
+import { MAX_SECTION_BODY_LENGTH } from "@/lib/html-content";
+import { htmlField } from "./html-field";
 import {
   EVENT_INFO_SECTION_ICONS,
   EVENT_INFO_SECTION_LINK_TARGETS,
@@ -9,17 +10,10 @@ import type { EventInfoSection, EventInfoSectionRepository } from "@/repositorie
 
 const iconSchema = z.enum(EVENT_INFO_SECTION_ICONS);
 
-// Section text may contain Markdown links; each must be a safe https link
-// (see src/lib/markdown-links.ts).
-const bodySchema = z
-  .string()
-  .trim()
-  .max(MAX_SECTION_BODY_LENGTH, "Text is too long.")
-  .superRefine((body, ctx) => {
-    const problem = findBadLink(body);
-    if (problem) ctx.addIssue({ code: "custom", message: problem });
-  })
-  .default("");
+// Section text is a small, fixed subset of HTML typed into a normal text box.
+// It is checked and rewritten into a canonical form when submitted (see
+// src/lib/html-content.ts) — invalid input is rejected with a readable error.
+const bodySchema = htmlField(MAX_SECTION_BODY_LENGTH);
 
 // Blank/missing = a normal page of text; otherwise the row opens that screen.
 const linkTargetSchema = z.enum(EVENT_INFO_SECTION_LINK_TARGETS).nullish().transform((v) => v ?? null);

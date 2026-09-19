@@ -49,19 +49,31 @@ describe("event info section text and link target", () => {
     expect(result.status).toBe("invalid");
   });
 
-  it("accepts formatted text with safe https links", async () => {
+  it("stores formatted text in its canonical form", async () => {
     const repo = new InMemoryEventInfoSectionRepository();
-    const body = "# Got 10 minutes?\n\nLeave a review on [G2](https://www.g2.com/products/x) and get **$25**.";
+    const body = '<h1>Got 10 minutes?</h1><p>Leave a review on <a href="https://www.g2.com/products/x">G2</a> and get <b>$25</b>.</p>';
     const result = await createEventInfoSection(repo, "evt-1", { ...base, body });
-    expect(result.status === "created" && result.section.body).toBe(body);
+    expect(result.status === "created" && result.section.body).toBe(
+      '<h1>Got 10 minutes?</h1>\n\n<p>Leave a review on <a href="https://www.g2.com/products/x">G2</a> and get <strong>$25</strong>.</p>',
+    );
+  });
+
+  it("turns plain text into paragraphs", async () => {
+    const repo = new InMemoryEventInfoSectionRepository();
+    const result = await createEventInfoSection(repo, "evt-1", { ...base, body: "First.\n\nSecond." });
+    expect(result.status === "created" && result.section.body).toBe("<p>First.</p>\n\n<p>Second.</p>");
   });
 
   it.each([
-    "[a](http://example.com)",
-    "[a](javascript:alert(1))",
-    "[a](https://user:pw@example.com)",
-    "[paypal.com](https://evil.example.com)",
-  ])("rejects text containing the unsafe link %j and stores nothing", async (body) => {
+    '<a href="http://example.com">a</a>',
+    '<a href="javascript:alert(1)">a</a>',
+    '<a href="https://user:pw@example.com">a</a>',
+    '<a href="https://evil.example.com">paypal.com</a>',
+    "<script>alert(1)</script>",
+    "<div>not allowed</div>",
+    '<img src="https://example.com/x.png">',
+    '<p style="color:red">x</p>',
+  ])("rejects the disallowed text %j and stores nothing", async (body) => {
     const repo = new InMemoryEventInfoSectionRepository();
     const result = await createEventInfoSection(repo, "evt-1", { ...base, body });
     expect(result.status).toBe("invalid");
@@ -82,19 +94,19 @@ describe("event info section text and link target", () => {
 
     const bad = await updateEventInfoSection(repo, created.section.id, {
       ...base,
-      body: "[a](http://example.com)",
+      body: '<a href="http://example.com">a</a>',
     });
     expect(bad.status).toBe("invalid");
-    expect((await repo.listByEvent("evt-1"))[0].body).toBe("safe");
+    expect((await repo.listByEvent("evt-1"))[0].body).toBe("<p>safe</p>");
 
     const good = await updateEventInfoSection(repo, created.section.id, {
       ...base,
-      body: "now [ok](https://example.com)",
+      body: 'now <a href="https://example.com">ok</a>',
       linkTarget: "speakers",
     });
     expect(good.status).toBe("updated");
     const [section] = await repo.listByEvent("evt-1");
-    expect(section.body).toBe("now [ok](https://example.com)");
+    expect(section.body).toBe('<p>now <a href="https://example.com/">ok</a></p>');
     expect(section.linkTarget).toBe("speakers");
   });
 });

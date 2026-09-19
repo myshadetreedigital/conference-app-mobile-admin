@@ -72,7 +72,7 @@ describe("updateEventInfoSection", () => {
 
     const [section] = await repo.listByEvent("event-1");
     expect(section.title).toBe("New title");
-    expect(section.body).toBe("New body");
+    expect(section.body).toBe("<p>New body</p>");
     expect(section.icon).toBe("heart");
   });
 

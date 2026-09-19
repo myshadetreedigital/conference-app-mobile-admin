@@ -57,8 +57,10 @@ function RowTypeSelect({ defaultValue }: { defaultValue: RowType }) {
 function FormattingHint() {
   return (
     <p className="text-xs text-zinc-500">
-      Formatting: **bold**, [link text](https://example.com), # Heading, and a blank line between
-      paragraphs. Links must be https:// and are checked when you save.
+      Plain text works — a blank line starts a new paragraph. You can also use these tags:{" "}
+      <code>&lt;p&gt; &lt;h1&gt;–&lt;h6&gt; &lt;strong&gt; (or &lt;b&gt;) &lt;em&gt; (or &lt;i&gt;) &lt;br&gt; &lt;ol&gt;&lt;li&gt;</code>
+      , and links as <code>&lt;a href=&quot;https://…&quot;&gt;text&lt;/a&gt;</code> (https, mailto: or tel:).
+      Anything else is rejected when you save.
     </p>
   );
 }
