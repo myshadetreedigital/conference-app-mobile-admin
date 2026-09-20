@@ -36,7 +36,7 @@ describe("createEventInfoSection", () => {
   it("rejects an icon outside the fixed set", async () => {
     const repo = new InMemoryEventInfoSectionRepository();
     const result = await createEventInfoSection(repo, "event-1", {
-      icon: "rocket" as CreateEventInfoSectionInput["icon"],
+      icon: "definitely-not-an-icon" as CreateEventInfoSectionInput["icon"],
       title: "Getting here",
       body: "",
     });

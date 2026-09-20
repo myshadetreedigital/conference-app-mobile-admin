@@ -14,7 +14,7 @@ import {
 } from "@/lib/qa-pair-list";
 import { MAX_ANSWER_LENGTH, MAX_QA_PAIRS, MAX_QUESTION_LENGTH } from "@/lib/qa-limits";
 import { pageFieldsFor, ROW_TYPE_GROUPS, rowTypeLabel, type RowType } from "@/lib/row-type";
-import { EVENT_INFO_SECTION_ICONS } from "@/repositories/event-info-section-repository";
+import { IconPicker } from "./icon-picker";
 
 // The add and edit forms for a More Info row. These run in the browser so the form
 // can react the instant something changes, with no trip to the server:
@@ -90,13 +90,7 @@ function SectionForm({
           required
           className="flex-1 rounded border px-3 py-2"
         />
-        <select name="icon" value={icon} onChange={(event) => setIcon(event.target.value)} className="rounded border px-3 py-2">
-          {EVENT_INFO_SECTION_ICONS.map((name) => (
-            <option key={name} value={name}>
-              {name}
-            </option>
-          ))}
-        </select>
+        <IconPicker value={icon} onChange={setIcon} />
       </div>
 
       <label className="flex items-center gap-2 text-sm">

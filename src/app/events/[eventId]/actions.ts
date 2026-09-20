@@ -31,6 +31,7 @@ import { SupabaseQaEntryRepository } from "@/repositories/supabase-qa-entry-repo
 import { saveQaPairs, validateQaPairs } from "@/services/qa-entry-service";
 import { readQaPairs } from "@/lib/qa-pairs";
 import { fieldsForRowType } from "@/lib/row-type";
+import { describeSaveError } from "@/lib/save-error";
 import { uploadEventMedia } from "@/lib/upload-event-media";
 import { readSpeakerLinks } from "@/lib/speaker-links";
 
@@ -281,7 +282,12 @@ export async function createEventInfoSectionAction(
   if (qaPairs && !qaPairs.ok) return { error: qaProblems(qaPairs.errors) };
 
   const supabase = await createClient();
-  const result = await createEventInfoSection(new SupabaseEventInfoSectionRepository(supabase), eventId, fields);
+  let result;
+  try {
+    result = await createEventInfoSection(new SupabaseEventInfoSectionRepository(supabase), eventId, fields);
+  } catch (error) {
+    return { error: describeSaveError(error) };
+  }
   if (result.status === "invalid") return { error: firstErrorMessage(result.errors) };
 
   const sectionId = result.section.id;
@@ -310,7 +316,12 @@ export async function updateEventInfoSectionAction(
   if (qaPairs && !qaPairs.ok) return { error: qaProblems(qaPairs.errors) };
 
   const supabase = await createClient();
-  const result = await updateEventInfoSection(new SupabaseEventInfoSectionRepository(supabase), sectionId, fields);
+  let result;
+  try {
+    result = await updateEventInfoSection(new SupabaseEventInfoSectionRepository(supabase), sectionId, fields);
+  } catch (error) {
+    return { error: describeSaveError(error) };
+  }
   if (result.status === "invalid") return { error: firstErrorMessage(result.errors) };
 
   if (qaPairs?.ok) {

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { EVENT_INFO_SECTION_ICONS } from "@/repositories/event-info-section-repository";
 import { InMemoryEventInfoSectionRepository } from "@/test/in-memory-event-info-section-repository";
 import { createEventInfoSection, updateEventInfoSection } from "./event-info-section-service";
 
@@ -41,6 +42,14 @@ describe("event info section text and link target", () => {
       expect(result.status).toBe("created");
     },
   );
+
+  it("accepts every icon in the catalogue", async () => {
+    for (const icon of EVENT_INFO_SECTION_ICONS) {
+      const repo = new InMemoryEventInfoSectionRepository();
+      const result = await createEventInfoSection(repo, "evt-1", { ...base, icon });
+      expect(result.status, icon).toBe("created");
+    }
+  });
 
   it("rejects an icon outside the fixed set", async () => {
     const repo = new InMemoryEventInfoSectionRepository();
