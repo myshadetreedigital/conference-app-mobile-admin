@@ -174,3 +174,49 @@ describe("updateSession", () => {
     expect(session.speakerIds).toEqual(["a"]);
   });
 });
+
+describe("session times and the event's time zone", () => {
+  const blank = { title: "Show", description: "", location: "" };
+  const firstStart = async (repo: InMemorySessionRepository) => (await repo.listByEvent("event-1"))[0].startsAt;
+
+  it("reads a typed time as the clock in the event's zone", async () => {
+    const repo = new InMemorySessionRepository();
+    await createSession(repo, "event-1", { ...blank, startsAt: "2026-10-09T21:00" }, [], "America/New_York");
+    expect(await firstStart(repo)).toBe("2026-10-10T01:00:00.000Z");
+  });
+
+  it("gives the same typed time a different moment in a different zone", async () => {
+    const repo = new InMemorySessionRepository();
+    await createSession(repo, "event-1", { ...blank, startsAt: "2026-10-09T21:00" }, [], "America/Los_Angeles");
+    expect(await firstStart(repo)).toBe("2026-10-10T04:00:00.000Z");
+  });
+
+  it("uses New York when no zone is given", async () => {
+    const repo = new InMemorySessionRepository();
+    await createSession(repo, "event-1", { ...blank, startsAt: "2026-10-09T21:00" });
+    expect(await firstStart(repo)).toBe("2026-10-10T01:00:00.000Z");
+  });
+
+  it("keeps a time that carries its own zone exactly as it is", async () => {
+    const repo = new InMemorySessionRepository();
+    await createSession(repo, "event-1", { ...blank, startsAt: "2026-10-09T21:00:00Z" }, [], "Asia/Tokyo");
+    expect(await firstStart(repo)).toBe("2026-10-09T21:00:00.000Z");
+  });
+
+  it("applies the zone when editing, and compares start and end in that zone", async () => {
+    const repo = new InMemorySessionRepository();
+    const created = await createSession(repo, "event-1", blank);
+    if (created.status !== "created") throw new Error("setup");
+    const times = { startsAt: "2026-10-09T22:00", endsAt: "2026-10-10T02:00" };
+    expect((await updateSession(repo, created.session.id, { ...blank, ...times }, [], "America/Chicago")).status).toBe("updated");
+    const [session] = await repo.listByEvent("event-1");
+    expect(session.startsAt).toBe("2026-10-10T03:00:00.000Z");
+    expect(session.endsAt).toBe("2026-10-10T07:00:00.000Z");
+  });
+
+  it.each(["2026-02-31T09:00", "2026-10-09T25:00", "next friday"])("rejects the time %j", async (bad) => {
+    const repo = new InMemorySessionRepository();
+    const result = await createSession(repo, "event-1", { ...blank, startsAt: bad });
+    expect(result.status).toBe("invalid");
+  });
+});

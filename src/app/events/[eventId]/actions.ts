@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { SupabaseEventRepository } from "@/repositories/supabase-event-repository";
+import { DEFAULT_TIME_ZONE } from "@/lib/event-time";
 import { SupabaseSpeakerRepository } from "@/repositories/supabase-speaker-repository";
 import { SupabaseSponsorRepository } from "@/repositories/supabase-sponsor-repository";
 import { SupabaseSessionRepository } from "@/repositories/supabase-session-repository";
@@ -63,6 +64,7 @@ export async function updateEventDetailsAction(eventId: string, formData: FormDa
     banner1LinkUrl: String(formData.get("banner1Link") ?? "") || null,
     banner2LinkUrl: String(formData.get("banner2Link") ?? "") || null,
     primaryColor: String(formData.get("primaryColor") ?? "") || null,
+    timeZone: String(formData.get("timeZone") ?? "") || undefined,
   };
   // Validate before uploading, so a rejected link doesn't leave orphaned images in storage.
   const check = updateEventDetailsSchema.safeParse(fields);
@@ -188,9 +190,14 @@ function readSessionForm(formData: FormData) {
   };
 }
 
-/** Every speaker id of the event: the only speakers a session in it may link. */
-async function speakerIdsOf(supabase: Awaited<ReturnType<typeof createClient>>, eventId: string) {
-  return (await new SupabaseSpeakerRepository(supabase).listByEvent(eventId)).map((speaker) => speaker.id);
+/**
+ * What a session form is checked against: the event's speaker ids (the only speakers a
+ * session in it may link) and its time zone (the clock typed times are read in).
+ */
+async function sessionContext(supabase: Awaited<ReturnType<typeof createClient>>, eventId: string) {
+  const speakers = await new SupabaseSpeakerRepository(supabase).listByEvent(eventId);
+  const event = await new SupabaseEventRepository(supabase).findById(eventId);
+  return { speakerIds: speakers.map((speaker) => speaker.id), timeZone: event?.timeZone ?? DEFAULT_TIME_ZONE };
 }
 
 export async function createSponsorAction(eventId: string, formData: FormData) {
@@ -248,8 +255,8 @@ export async function createSessionAction(eventId: string, formData: FormData) {
   await requireUser();
   const supabase = await createClient();
   const repo = new SupabaseSessionRepository(supabase);
-  const eventSpeakerIds = await speakerIdsOf(supabase, eventId);
-  const result = await createSession(repo, eventId, readSessionForm(formData), eventSpeakerIds);
+  const { speakerIds, timeZone } = await sessionContext(supabase, eventId);
+  const result = await createSession(repo, eventId, readSessionForm(formData), speakerIds, timeZone);
 
   if (result.status === "invalid") redirectWithFirstError(eventId, "sessions", result.errors);
   redirect(`/events/${eventId}?tab=sessions`);
@@ -259,12 +266,13 @@ export async function updateSessionAction(eventId: string, formData: FormData) {
   await requireUser();
   const supabase = await createClient();
   const repo = new SupabaseSessionRepository(supabase);
-  const eventSpeakerIds = await speakerIdsOf(supabase, eventId);
+  const { speakerIds, timeZone } = await sessionContext(supabase, eventId);
   const result = await updateSession(
     repo,
     String(formData.get("sessionId") ?? ""),
     readSessionForm(formData),
-    eventSpeakerIds,
+    speakerIds,
+    timeZone,
   );
   if (result.status === "invalid") redirectWithFirstError(eventId, "sessions", result.errors);
   redirect(`/events/${eventId}?tab=sessions`);

@@ -21,6 +21,8 @@ export interface Event {
   banner2LinkUrl: string | null;
   /** Image of the venue area shown in the mobile app's Location block. */
   locationImageUrl: string | null;
+  /** IANA time zone (e.g. "America/New_York") that session times are typed and shown in. */
+  timeZone: string;
 }
 
 export interface NewEvent {
@@ -40,6 +42,7 @@ export interface UpdateEventDetailsData {
   /** The one org-customizable accent color — see the mobile app's
    *  AccentProvider. Null means "use the house default". */
   primaryColor: string | null;
+  timeZone: string;
   /** Omit any of these to leave that existing image unchanged — only
    *  set when a new file was actually uploaded (or explicitly to null
    *  to clear it). */

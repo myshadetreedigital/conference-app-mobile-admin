@@ -272,3 +272,40 @@ describe("updateEventDetails", () => {
     expect(result.status).toBe("invalid");
   });
 });
+
+describe("updateEventDetails time zone", () => {
+  const base = {
+    tagline: "",
+    description: "",
+    location: "",
+    startsAt: null,
+    endsAt: null,
+    banner1LinkUrl: null,
+    banner2LinkUrl: null,
+    primaryColor: null,
+  };
+
+  async function setup() {
+    const repo = new InMemoryEventRepository();
+    const created = await createEvent(repo, "org-1", { name: "2026 Conference" });
+    if (created.status !== "created") throw new Error("setup failed");
+    return { repo, id: created.event.id };
+  }
+
+  it("starts as New York and saves a chosen zone", async () => {
+    const { repo, id } = await setup();
+    expect((await repo.findById(id))?.timeZone).toBe("America/New_York");
+    const result = await updateEventDetails(repo, id, { ...base, timeZone: "America/Chicago" });
+    expect(result.status).toBe("updated");
+    expect((await repo.findById(id))?.timeZone).toBe("America/Chicago");
+  });
+
+  it.each(["Mars/Olympus", "not a zone", "../etc/passwd", "America/"])("rejects %j and saves nothing", async (zone) => {
+    const { repo, id } = await setup();
+    const result = await updateEventDetails(repo, id, { ...base, tagline: "changed", timeZone: zone });
+    expect(result.status).toBe("invalid");
+    const event = await repo.findById(id);
+    expect(event?.timeZone).toBe("America/New_York");
+    expect(event?.tagline).toBe("");
+  });
+});

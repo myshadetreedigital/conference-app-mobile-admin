@@ -6,6 +6,7 @@ import type {
   NewEvent,
   UpdateEventDetailsData,
 } from "./event-repository";
+import { DEFAULT_TIME_ZONE } from "@/lib/event-time";
 
 interface EventRow {
   id: string;
@@ -27,6 +28,7 @@ interface EventRow {
   banner_2_image_url: string | null;
   banner_2_link_url: string | null;
   location_image_url: string | null;
+  time_zone?: string | null;
 }
 
 function toEvent(row: EventRow): Event {
@@ -50,6 +52,7 @@ function toEvent(row: EventRow): Event {
     banner2ImageUrl: row.banner_2_image_url,
     banner2LinkUrl: row.banner_2_link_url,
     locationImageUrl: row.location_image_url ?? null,
+    timeZone: row.time_zone ?? DEFAULT_TIME_ZONE,
   };
 }
 
@@ -130,6 +133,7 @@ export class SupabaseEventRepository implements EventRepository {
       banner_1_link_url: data.banner1LinkUrl,
       banner_2_link_url: data.banner2LinkUrl,
       primary_color: data.primaryColor,
+      time_zone: data.timeZone,
     };
     if (data.logoUrl !== undefined) patch.logo_url = data.logoUrl;
     if (data.banner1ImageUrl !== undefined) patch.banner_1_image_url = data.banner1ImageUrl;

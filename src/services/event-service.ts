@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { Event, EventRepository } from "@/repositories/event-repository";
 import { checkWebsite } from "@/lib/safe-url";
 import { toSlug } from "@/lib/slug";
+import { DEFAULT_TIME_ZONE, isValidTimeZone } from "@/lib/event-time";
 
 export const createEventSchema = z.object({
   name: z.string().trim().min(1, "Name is required"),
@@ -133,6 +134,13 @@ const colorSchema = z
     message: "Enter a hex color like #AC9245",
   });
 
+// The zone session times are typed and shown in. Must be a real IANA zone name.
+const timeZoneSchema = z
+  .string()
+  .trim()
+  .default(DEFAULT_TIME_ZONE)
+  .refine(isValidTimeZone, { message: "Choose a time zone from the list" });
+
 export const updateEventDetailsSchema = z.object({
   tagline: z.string().trim().default(""),
   description: z.string().trim().default(""),
@@ -142,6 +150,7 @@ export const updateEventDetailsSchema = z.object({
   banner1LinkUrl: bannerLinkSchema("Banner 1 link"),
   banner2LinkUrl: bannerLinkSchema("Banner 2 link"),
   primaryColor: colorSchema,
+  timeZone: timeZoneSchema,
 });
 
 export type UpdateEventDetailsInput = z.input<typeof updateEventDetailsSchema>;

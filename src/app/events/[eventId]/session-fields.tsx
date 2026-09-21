@@ -1,4 +1,4 @@
-import { toDateTimeLocal } from "@/lib/date-time-local";
+import { isoToZonedLocal } from "@/lib/event-time";
 import type { Session } from "@/repositories/session-repository";
 import type { Speaker } from "@/repositories/speaker-repository";
 
@@ -7,9 +7,12 @@ export function SessionFields({
   idPrefix,
   session,
   speakers,
+  timeZone,
 }: {
   idPrefix: string;
   session?: Session;
+  /** The event's time zone: the clock the times are typed and shown in. */
+  timeZone: string;
   speakers: Pick<Speaker, "id" | "name">[];
 }) {
   return (
@@ -21,6 +24,7 @@ export function SessionFields({
         required
         className="w-full rounded border px-3 py-2"
       />
+      <p className="text-xs text-zinc-500">Times are in the event&apos;s time zone: {timeZone.replaceAll("_", " ")}.</p>
       <div className="flex gap-2">
         <div className="flex-1 space-y-1">
           <label htmlFor={`${idPrefix}-startsAt`} className="text-xs font-medium text-zinc-500">
@@ -30,7 +34,7 @@ export function SessionFields({
             id={`${idPrefix}-startsAt`}
             name="startsAt"
             type="datetime-local"
-            defaultValue={toDateTimeLocal(session?.startsAt ?? null)}
+            defaultValue={isoToZonedLocal(session?.startsAt ?? null, timeZone)}
             className="w-full rounded border px-3 py-2"
           />
         </div>
@@ -42,7 +46,7 @@ export function SessionFields({
             id={`${idPrefix}-endsAt`}
             name="endsAt"
             type="datetime-local"
-            defaultValue={toDateTimeLocal(session?.endsAt ?? null)}
+            defaultValue={isoToZonedLocal(session?.endsAt ?? null, timeZone)}
             className="w-full rounded border px-3 py-2"
           />
         </div>

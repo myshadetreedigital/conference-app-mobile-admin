@@ -22,6 +22,7 @@ const row = {
   banner_2_image_url: null,
   banner_2_link_url: null,
   location_image_url: "https://cdn.example.com/venue.png",
+  time_zone: "America/Chicago",
 };
 
 const expected = {
@@ -44,6 +45,7 @@ const expected = {
   banner2ImageUrl: null,
   banner2LinkUrl: null,
   locationImageUrl: "https://cdn.example.com/venue.png",
+  timeZone: "America/Chicago",
 };
 
 const details = {
@@ -55,6 +57,7 @@ const details = {
   banner1LinkUrl: "https://example.com/1",
   banner2LinkUrl: null,
   primaryColor: "#1A237E",
+  timeZone: "America/Chicago",
 };
 
 describe("SupabaseEventRepository reads", () => {
@@ -139,7 +142,15 @@ describe("SupabaseEventRepository writes", () => {
       banner_1_link_url: "https://example.com/1",
       banner_2_link_url: null,
       primary_color: "#1A237E",
+      time_zone: "America/Chicago",
     });
+  });
+
+  it("reads a row with no time zone as the default zone, for a database that predates the column", async () => {
+    const withoutZone: Record<string, unknown> = { ...row };
+    delete withoutZone.time_zone;
+    const fake = createFakeSupabase({ data: withoutZone });
+    expect((await new SupabaseEventRepository(fake.client).findById("e-1"))?.timeZone).toBe("America/New_York");
   });
 
   it("updateDetails includes each image column that is provided, including null to clear", async () => {

@@ -67,16 +67,21 @@ const TABS = [
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
 
-function formatSessionTime(startsAt: string | null, endsAt: string | null): string | null {
+/** Every zone the runtime knows, with the event's current one included even if it is an older alias. */
+function timeZoneChoices(current: string): string[] {
+  const zones = Intl.supportedValuesOf("timeZone");
+  return zones.includes(current) ? zones : [current, ...zones];
+}
+
+function formatSessionTime(startsAt: string | null, endsAt: string | null, timeZone: string): string | null {
   if (!startsAt) return null;
-  const start = new Date(startsAt);
-  const startText = start.toLocaleString(undefined, {
+  const startText = new Date(startsAt).toLocaleString("en-US", {
     dateStyle: "medium",
     timeStyle: "short",
+    timeZone,
   });
   if (!endsAt) return startText;
-  const end = new Date(endsAt);
-  const endText = end.toLocaleString(undefined, { timeStyle: "short" });
+  const endText = new Date(endsAt).toLocaleString("en-US", { timeStyle: "short", timeZone });
   return `${startText} – ${endText}`;
 }
 
@@ -216,6 +221,27 @@ export default async function EventContentPage({
                         highlights). Defaults to the house gold if never changed.
                       </p>
                     </div>
+                  </div>
+                  <div className="space-y-1">
+                    <label htmlFor="event-time-zone" className="text-xs font-medium text-zinc-500">
+                      Time zone
+                    </label>
+                    <select
+                      id="event-time-zone"
+                      name="timeZone"
+                      defaultValue={event.timeZone}
+                      className="w-full rounded border px-3 py-2"
+                    >
+                      {timeZoneChoices(event.timeZone).map((zone) => (
+                        <option key={zone} value={zone}>
+                          {zone.replaceAll("_", " ")}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-zinc-500">
+                      Session times are typed and shown in this zone, and attendees see them in it
+                      wherever their phone is. Change it first, then check your session times.
+                    </p>
                   </div>
                   <div className="space-y-1">
                     <label htmlFor="event-tagline" className="text-xs font-medium text-zinc-500">
@@ -379,9 +405,9 @@ export default async function EventContentPage({
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="font-medium">{session.title}</p>
-                        {formatSessionTime(session.startsAt, session.endsAt) && (
+                        {formatSessionTime(session.startsAt, session.endsAt, event.timeZone) && (
                           <p className="text-xs text-zinc-500">
-                            {formatSessionTime(session.startsAt, session.endsAt)}
+                            {formatSessionTime(session.startsAt, session.endsAt, event.timeZone)}
                           </p>
                         )}
                         {session.location && <p className="text-xs text-zinc-500">{session.location}</p>}
@@ -402,7 +428,12 @@ export default async function EventContentPage({
                             className="mt-3 space-y-2 border-t pt-3"
                           >
                             <input type="hidden" name="sessionId" value={session.id} />
-                            <SessionFields idPrefix={`session-${session.id}`} session={session} speakers={speakers} />
+                            <SessionFields
+                              idPrefix={`session-${session.id}`}
+                              session={session}
+                              speakers={speakers}
+                              timeZone={event.timeZone}
+                            />
                             <button
                               type="submit"
                               className="rounded bg-black px-4 py-2 text-white hover:bg-zinc-800"
@@ -423,7 +454,7 @@ export default async function EventContentPage({
                 ))}
               </ul>
               <form action={createSessionAction.bind(null, eventId)} className="space-y-2 border-t pt-4">
-                <SessionFields idPrefix="new-session" speakers={speakers} />
+                <SessionFields idPrefix="new-session" speakers={speakers} timeZone={event.timeZone} />
                 <button type="submit" className="rounded bg-black px-4 py-2 text-white hover:bg-zinc-800">
                   Add session
                 </button>

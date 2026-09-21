@@ -1,3 +1,4 @@
+import { DEFAULT_TIME_ZONE } from "@/lib/event-time";
 import { randomUUID } from "node:crypto";
 import type {
   Event,
@@ -45,6 +46,7 @@ export class InMemoryEventRepository implements EventRepository {
       banner2ImageUrl: null,
       banner2LinkUrl: null,
       locationImageUrl: null,
+      timeZone: DEFAULT_TIME_ZONE,
     };
     this.byId.set(event.id, event);
     return event;
@@ -85,6 +87,7 @@ export class InMemoryEventRepository implements EventRepository {
     event.banner1LinkUrl = data.banner1LinkUrl;
     event.banner2LinkUrl = data.banner2LinkUrl;
     event.primaryColor = data.primaryColor;
+    event.timeZone = data.timeZone;
     if (data.logoUrl !== undefined) event.logoUrl = data.logoUrl;
     if (data.banner1ImageUrl !== undefined) event.banner1ImageUrl = data.banner1ImageUrl;
     if (data.banner2ImageUrl !== undefined) event.banner2ImageUrl = data.banner2ImageUrl;
