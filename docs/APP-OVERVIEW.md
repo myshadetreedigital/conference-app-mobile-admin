@@ -1,6 +1,6 @@
 # Conference App Platform — System Overview
 
-**Purpose of this document:** a complete, self-contained description of what this system is, what it does today, how it is built, and what state it is in — written so that a person or an LLM with no prior context can understand it fully. Part 12 analyses how it could be adapted into a second, simpler product (an events hub). Everything above Part 12 describes what exists now; Part 12 is analysis, not built.
+**Purpose of this document:** a complete, self-contained description of what this system is, what it does today, how it is built, and what state it is in — written so that a person or an LLM with no prior context can understand it fully. Part 12 describes the direction it is being taken next: a multi-organizer festival guide (for example Atlanta Pride weekend), where many organizers each curate their own events under one umbrella. Everything above Part 12 describes what exists now; Part 12 is planned, not built.
 
 *As of 2026-09-20. Facts were taken from the code, migrations and docs in both repositories, and (for the database) checked against the live Supabase project. Where something is unverified or not built, this document says so.*
 
@@ -203,38 +203,81 @@ Speaker links are validated **per platform** (Instagram, Facebook, YouTube, TikT
 
 ---
 
-## 12. Analysis: adapting this into an events hub (NOT BUILT)
+## 12. Direction: from one conference to a multi-organizer festival guide (NOT BUILT)
 
-**The idea:** a second, simpler app for the ATLGBTQ brand — one place to post LGBTQ+ events in Atlanta — with changed terminology (speakers → hosts) and **several events active at once**. The rest of the product is intended to stay largely as is.
+**Decisions (2026-09-20):** the product grows into a multi-organizer guide, built as a **separate project cloned from these two repositories**: new copies of both repos, a **new Supabase project** (its own database and keys), and its own Vercel project. The current conference app and its production database (NSSC 2026) are not touched by this work. Cloning means the new project starts from this code and is changed in place rather than written from scratch. The earlier idea of a simpler, trimmed-down fork is dropped; the new product keeps every feature and adds to them. Everything in Parts 1–11 describes what exists today; this part describes where the clone is going and what changes.
 
-**Short answer:** the concept is right, and most of the existing pieces carry over, but *multiple active events* is a much bigger change than the terminology, because the whole product is built around one event.
+### 12.1 The product
 
-### 12.1 What changes, and how big
+**The problem.** During Atlanta Pride weekend, many independent promoters run their own events (parties, panels, shows). The information is scattered across many social accounts and flyers, and attendees can't see it all in one place.
+
+**The solution.** One app where **many organizers, each curating their own events, appear together under one umbrella** (for example "Atlanta Pride 2026"). An attendee can:
+- do everything they can do in the app today (browse a schedule, see people, bookmark sessions with the double-booking check, keep private contacts, read More Info pages, see the venue on a map);
+- **see every organization taking part**, and open an organization to see **all of that organization's events in one place**;
+- browse the whole weekend across organizers, and filter it.
+
+The commercial shape changes with this: the earlier decision "one paying client, one event, `EXPO_PUBLIC_EVENT_ID`" (Part 1) does not apply to the new product. It is a separate project with its own database, so the NSSC conference is unaffected.
+
+### 12.2 New vocabulary (confirmed 2026-09-20; "Festival" and "Event" are still working names)
+
+| Term | Meaning |
+|---|---|
+| **Festival** (working name) | The umbrella the app opens on: "Atlanta Pride 2026". Today's `events` row plays this role for the single-event app; whether it keeps that name is open (12.6, question 1). |
+| **Organizer** | A promoter/organization taking part. Already exists as `organizations`; becomes public (logo, description, links) instead of purely a login boundary. |
+| **Event** | One thing an organizer runs during the festival (for example "White Party"). See 12.3 for the structural question. |
+| **Session type** | Every schedule item gets a type: *party, panel, show*, plus today's talk/workshop; the list is extensible. Used for filtering and for a badge/icon on the phone. |
+| **Person type** | Every speaker gets a type: *host, MC, DJ, performer*, plus *speaker*; extensible. Replaces the single fixed word "Speaker". **A person can hold more than one type (confirmed).** |
+
+### 12.3 The structural decision that everything else depends on
+
+Today: **Organization 1 → n Event; Event 1 → n Session/Speaker/Sponsor/More Info.** The event is the tenant boundary, and the phone shows exactly one.
+
+The new requirement has one more level than that, and it is not yet settled how to model it. Two candidate shapes:
+
+- **A. Festival above events (three levels).** `Festival → Event (owned by an Organizer) → Sessions`. A promoter's "White Party" is an *event* that has its own details, hosts, sponsors, and possibly several sessions (doors, main show, after-party). The festival is the umbrella that lists organizers and their events. Most flexible; most new code (a new top-level table and a many-to-many "this event takes part in this festival").
+- **B. The festival is today's event; promoters' items are sessions.** `Event (the festival) → Sessions (each tagged with an organizer and a session type)`. Least change: the existing schema, Schedule, Speakers and Sponsors screens carry over almost unchanged, and "an organizer's events in one place" is a filter on sessions. The cost: an organizer's individual event can't have its own page, banner, or sponsors — it is only a schedule row — and organizers would need write access to *sessions* inside an event that another organization owns, which is the reverse of today's permission model.
+
+**Decided (2026-09-20): shape A.** A new level is added above events, because it scales better and makes organizations and events first-class, browsable things. Shape B is rejected. This decides the migrations, the admin navigation and the phone's front door.
+
+### 12.4 What changes, and how big
 
 | Change | Where it lives today | Size |
 |---|---|---|
-| **Terminology** (Speakers → Hosts, etc.) | Admin tab labels and form text; mobile tab names, screen titles, route folder `speakers/`; the `speakers` table and its repository/service; test descriptions | **Small if labels only** (keep internal names `speakers`); moderate if you rename tables and code too. Decide which; a labels-only change is cheaper and safer. |
-| **Several events live at once** | DB: partial unique index `events_one_live_per_org` (drop it) and the friendly "already live elsewhere" message in `publishEvent`. Mobile: **every screen filters by one `EVENT_ID` from the environment** | **Large.** The phone needs an **Events list** as its front door and an **event detail** with its own hosts/partners/info pages, replacing "all tabs are the one event". Home, Schedule and More Info are all event-scoped today. |
-| **Per-event look** | One accent color for the whole app, fetched by `EVENT_ID` | Decide: one ATLGBTQ brand color for the whole app, or a color per event (then the accent provider must move from app-level to event-level). |
-| **Sign-in requirement** | The whole app is behind login (`Stack.Protected`) | For a public discovery app, browsing should probably not need an account. Accounts would then only be needed for "save this event"—or not at all. Removing accounts removes the account-deletion and much of the privacy burden. **Worth an explicit decision** given the community. |
-| **Organization onboarding** | Multi-tenant: registration → create org → duplicate detection | One brand posts everything, so this could be simplified to a single fixed organization. Optional. |
+| **Many live events** | DB: the partial unique index `events_one_live_per_org` (only one live event per organization) and the "already live elsewhere" message in `publishEvent`. | Small and mechanical: drop the index, change the publish rule. |
+| **Phone: the app is no longer one event** | Every screen filters by `EVENT_ID` from the environment; Home, Schedule, Speakers, Sponsors, Contacts and More Info are all event-scoped. | **Large.** The phone needs a *chosen context* instead of a constant: a festival landing (the reworked Home), an **Organizers** list, an **organizer page**, and an **event page**. The existing tabs keep working *inside* an event (or across the festival for Schedule and People). |
+| **Home screen rework** | Two-slot banner, pill menu, next session, spotlight sponsor, featured speakers. | Moderate. Becomes the festival's front door: banners, "happening now / today", featured organizers, and entry points to the organizer list and the full schedule. |
+| **Organizers become public** | `organizations` is only readable by its own members (RLS). | Moderate. **Decided: every organizer field is public** (name, logo, description, website and social links, contact phone/email/address), so the table can be public-read as a whole rather than split into public and private parts. Consequences: the owner must not store internal notes on it (a separate private table if ever needed); the existing internal columns `flagged_duplicate_of` and `created_by` and the self-registration duplicate check would be dropped or hidden from public reads, since organizers no longer self-register; new profile fields (logo, description, links) are added. The organizer's contact details are published exactly as the onboarding form collects them, so the form should say so. |
+| **Person types** | `speakers` has no type; label "Speaker" everywhere. | Small–moderate: because one person can hold several types (confirmed), a small `person_types` table plus a join table (not a single column), admin multi-select field, phone badge and filter, and label wording ("People" or per-type headings instead of "Speakers"). |
+| **Session types** | `sessions` has no type. | Small–moderate: a type column, admin field, phone filter and badge/icon. |
+| **Sessions become central** | Admin can only create and delete sessions; there is **no editing** and **no UI to link speakers to sessions** (`session_speakers` is only filled from seed data). | **Now a blocker, not a nice-to-have.** Sessions with hosts/MCs/DJs/performers are the core content; session edit, type, and person-linking screens must be built first. |
+| **Permissions across organizations** | One organization per admin account (enforced in the DB); every member can do everything; `is_event_admin` = admin of the owning organization; organizations self-register. | **Much smaller than first feared, because of a decision:** organizers get no logins. Only the platform owner (ATLGBTQ) creates and edits organizers, events and everything under them (12.6, questions 2–3). Organizer self-registration and org onboarding come out of the admin app; the one-org-per-admin rule and membership roles stop mattering for organizers. Organizers still exist as public data rows, not as users. |
+| **Per-organizer look** | One accent color for the whole app from `events.primary_color`, fetched by `EVENT_ID`. | **Decided: a color per organizer** (12.6, question 6). The accent provider moves from app level to organizer context, and the color column moves to (or is added on) the organizer. |
+| **Cross-event bookmarks** | Bookmarks are (user, session) and already work across events at the table level; the double-booking check and Schedule are per event. | Small–moderate: the schedule and conflict check must work across the whole festival, not one event. |
+| **Private contacts** | Per attendee, per event, max 10. | Decide: keep per event, or per festival. |
+| **Sign-in** | The whole app is behind login (`Stack.Protected`); RLS already allows public reads. | **Decided: browsing needs no account; sign-in is prompted only when saving** (12.6, question 8). The route gate is removed and save actions trigger sign-in. |
 
-### 12.2 What probably stays as is
-The whole admin architecture (layering, validation, repositories, tests); event content model (details, banners, location + image, More Info pages with Q&A, HTML filter, icon picker); speakers/hosts with photo, bio, featured flag and icon links; sponsors as partners with tiers (or a flat list); publish/archive; the design system and runtime accent; Supabase + RLS; the Edge Function and email hook if accounts remain.
+### 12.5 What stays as is
+The architecture rules (Route/Action → Service → Repository → Supabase, Zod, fakes, tests); RLS as the boundary; the More Info system with text and Q&A pages, the HTML filter and the icon picker (per event, and possibly per organizer); banners; location block with map link; sponsors and tiers; bookmarks; private contacts; the design system and runtime accent; account deletion; the Edge Function and email hook; migrations applied by hand from the admin repo; the two-repo rule.
 
-### 12.3 What probably goes
-**Schedule and sessions** (an event listing rarely has a multi-session agenda — but decide), **bookmarks** with the double-booking check (or turn into "saved events"), **personal contacts**, and possibly accounts entirely.
+### 12.6 Questions to settle before building
 
-### 12.4 Small additions an events *listing* usually needs (not requested — for consideration)
-The current event has date-only start/end and a text address. Listings usually want a real start time, a venue name separate from the address, a ticket/RSVP link, a category or tags, an age note, and accessibility info. Most of these fit as a few extra columns and admin fields.
+1. ~~Shape A or B?~~ **Answered: A**, a level above events. Still open: what to call each level in the UI ("Festival" and "Event" are placeholders), and whether one organizer's "event" is a single thing at one time and place or has several sessions.
+2. ~~Who can create an organizer?~~ **Answered:** only the platform owner. Organizers do not self-register; the guide is gated by hand.
+3. ~~Who edits what?~~ **Answered:** only the platform owner adds or edits anything. Organizers submit their organizer and event information through a **separate onboarding form** (outside this admin app), and the owner enters it. Still open: where that form lives (a third-party form tool, or a public page in this system, which would be a new public-write surface needing spam and abuse protection), and whether submissions should flow into the admin for review.
+4. **Person types and session types:** are the starting lists (host, MC, DJ, performer, speaker; party, panel, show, talk, workshop) complete? (Only the owner edits the lists, since only the owner edits anything. **Answered: one person can hold several types.**)
+5. ~~Public organizer profile~~ **Answered:** all organizer fields are public. Still open: the exact field list (logo, description, website and social links, contact email/phone/address) and which links get the per-platform validation used for speakers.
+6. ~~Look~~ **Answered:** a color **per organizer**. The accent provider moves from app level to organizer context (organizer page and that organizer's events use its color). Still open: whether it is one color or a small palette, and what the festival-level screens (Home, organizer list) use, likely a fixed festival color.
+7. ~~Share the current Supabase project?~~ **Answered: no.** A new Supabase project, Vercel project and repos, so the two products are fully isolated. Consequence: fixes made later in one are not automatic in the other (see question 9).
+8. ~~Accounts~~ **Answered:** browsing does **not** require sign-in; login/registration is triggered only when the person saves something (a bookmark, a contact). This matches Apple's rule that an app should not force an account unless it has significant account-based features. Age-restricted content (18+/21+ parties) is handled through each store's age-rating questionnaire, not by requiring sign-in; **not yet verified against current store policy, to be checked in the compliance phase.** Work this implies: RLS and the mobile app's `Stack.Protected` gate change so signed-out visitors can read; save actions prompt for sign-in and then continue.
+9. **Sequence (updated):** *(f, added by the owner)* first **complete the remaining conference-app items** (Part 11 known gaps: session editing and speaker linking, the Contacts count question, confirming migration 0020, the sponsor website field, plus the fixes/security items already planned), because the new project is an extension of that app, and **cloning after these are done** means the fixes are inherited instead of made twice. Then *(a)* person and session types → *(b)* the festival level, organizers and events model → *(c)* the phone front door, organizer pages, Home rework, signed-out browsing → *(d)* security and compliance review of the public data and the sign-in change → publishing. Confirm whether the clone is made before or after step (f).
+10. ~~Timeline~~ **Answered:** the festival is **Oct 9, 2026**; the target is to **submit to the Apple App Store on Oct 2, 2026** (12 days from 2026-09-20). Everything in this part is intended as the first release, but the date makes scope the main risk: see 12.7.
 
-### 12.5 Recommended approach
-Fork both repos into a new pair and point them at a **new Supabase project** (isolation from the client's production data; the current tenancy model — one live event, single-event phone app — would otherwise fight the new one). Do the multi-event restructure first, then the terminology pass, then trim features. Reuse the existing conventions (migrations by hand, tests, two-repo rule).
+### 12.7 Schedule and scope for the Oct 2 submission
 
-### 12.6 Questions to settle before starting
-1. Labels-only terminology, or rename tables and code?
-2. Is an account needed at all? If yes, only for saving events?
-3. One brand color or a color per event?
-4. Do events have sessions/agendas, or are they single listings?
-5. Do you want the extra listing fields in 12.4?
-6. One fixed organization (the hub), or still multi-organization?
+**Facts that drive the plan.** Apple review usually takes 1–2 days but can take longer, and a first submission is often rejected once; a rejection on Oct 2 leaves about a week to fix and resubmit. Items with lead times outside the code: an Apple Developer Program account (individual enrollment is quick; an organization account needs a D-U-N-S number and can take days to weeks), the app icon and store screenshots, a privacy policy at a public URL, a support URL, the age-rating questionnaire, and `eas init` plus EAS CLI setup. **Start these first; they cannot be sped up by writing code.**
+
+**Content does not need to be finished at submission.** Organizers, events, sessions and people are database rows the owner enters after the app is approved, so the app can be approved while the guide is still being filled in.
+
+**Proposed must-have for Oct 2:** the cloned project (new Supabase, Vercel, repos); the festival level and organizers (public organizer pages, all events of an organizer in one place); session types and multi-valued person types; session editing and linking people to sessions in the admin; signed-out browsing with sign-in on save; per-organizer color; a reworked Home; account deletion (already built); a focused security pass and the compliance items above.
+
+**Candidates to cut or defer if time runs out:** private Contacts (already built, keep unless it blocks), the Attendees directory (already deferred), a staging environment, rate limiting, per-platform validation for any new organizer links beyond https-only, the onboarding form as code (use a third-party form tool; no code).
