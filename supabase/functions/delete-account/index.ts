@@ -10,7 +10,9 @@
 // admin_memberships. If this is ever invoked for an admin-web account,
 // note that admin_memberships also cascades on user delete — deleting
 // an org's only owner would orphan that organization.
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+// Pinned to an exact version: an unpinned "@2" would let whatever esm.sh serves next run here,
+// next to the service-role key.
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
 Deno.serve(async (req) => {
   if (req.method !== "POST") {
@@ -36,6 +38,24 @@ Deno.serve(async (req) => {
 
   // Service-role client — only ever runs here, server-side.
   const adminClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+  // Admin accounts and attendee accounts share one login system. Deleting an organizer's
+  // account here would cascade away their membership and could orphan the organization,
+  // so this endpoint refuses; an organizer's account is removed by the platform operator.
+  const { data: memberships, error: membershipError } = await adminClient
+    .from("admin_memberships")
+    .select("id")
+    .eq("user_id", userData.user.id)
+    .limit(1);
+  if (membershipError) {
+    return new Response(JSON.stringify({ error: "Could not check account type" }), { status: 500 });
+  }
+  if (memberships && memberships.length > 0) {
+    return new Response(
+      JSON.stringify({ error: "Organizer accounts can't be deleted from the app. Contact the platform operator." }),
+      { status: 403 },
+    );
+  }
+
   const { error: deleteError } = await adminClient.auth.admin.deleteUser(userData.user.id);
   if (deleteError) {
     return new Response(JSON.stringify({ error: deleteError.message }), { status: 500 });
