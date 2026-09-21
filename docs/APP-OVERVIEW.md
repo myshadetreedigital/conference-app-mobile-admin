@@ -54,7 +54,7 @@ A **conference companion product** made of two applications that share one Supab
 
 ## 4. Data model (Supabase / Postgres)
 
-Migrations `0000`–`0021` live in `supabase/migrations/` of the admin repo. **The admin repo owns the schema.** Migrations are applied **by hand** by pasting SQL into the Supabase SQL editor, in order; applied migrations are never edited. `0000`–`0020` are applied to the live project (`0005` no longer exists; see Part 4); `0021` (event time zone) is committed and **must be applied by hand before the admin and phone changes that use it are deployed**.
+Migrations `0000`–`0022` live in `supabase/migrations/` of the admin repo. **The admin repo owns the schema.** Migrations are applied **by hand** by pasting SQL into the Supabase SQL editor, in order; applied migrations are never edited. `0000`–`0020` are applied to the live project (`0005` no longer exists; see Part 4); `0021` (event time zone) is applied; `0022` (database limits for contacts and session-speaker links) is committed and **needs applying by hand**.
 
 ### Tables
 
@@ -175,7 +175,8 @@ Speaker links are validated **per platform** (Instagram, Facebook, YouTube, TikT
 - A 2026-09-16 audit (`docs/SECURITY-AUDIT.md`) found cross-organization storage tampering (fixed by path namespacing and `is_event_admin()` storage policies), missing upload limits (fixed), and PII in a log line (fixed).
 - Links and rich text are validated on save, constrained again by database CHECKs where they apply, and re-validated by the phone at display time.
 - Every admin server action re-derives identity server-side; the organization id is never taken from form input.
-- **Not done:** a fresh security review of the new features, a staging environment, rate limiting, production email hardening beyond Resend.
+- A second review on 2026-09-20 (`docs/SECURITY-REVIEW-2026-09.md`) added database limits (`0022`), browser security headers, and a safer `delete-account`; it lists findings that were accepted or deferred and a Supabase dashboard checklist for the owner.
+- **Not done:** a staging environment, script CSP, rate limiting beyond Supabase's built-ins, secure token storage on the phone.
 
 ---
 
@@ -199,7 +200,7 @@ Speaker links are validated **per platform** (Instagram, Facebook, YouTube, TikT
 
 **Known gaps:** personal-contact cap enforced only in the app; sessions saved before the time zone change were read as UTC and should be re-checked and re-saved.
 
-**Agreed order of remaining work:** finish remaining fixes → **security** review → **compliance** (privacy policy, store data-safety declarations; account deletion already exists) → **publishing** (blocked on: whose Apple/Google developer accounts publish the app, the client's brand assets, and running `eas init`; EAS CLI is not installed yet).
+**Remaining work:** security review is done (see above); the compliance pack is drafted in `docs/COMPLIANCE.md` (data inventory, privacy policy draft, Apple and Google declarations, checklist); **publishing** is blocked on the owner: Apple/Google developer accounts, publisher name and a privacy-policy URL, final app name and identifiers, icon and screenshots, a reviewer demo account, `eas init`.
 
 ---
 
