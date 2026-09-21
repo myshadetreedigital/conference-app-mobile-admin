@@ -1,30 +1,46 @@
 # Product Decisions — carried forward from the first iteration
 
-Everything below is a settled requirement, arrived at through real
-back-and-forth during the first build. The *code* is being thrown out;
-these decisions are not being reconsidered as part of that reset —
-this file is what the rebuild is built *against*.
+Settled product decisions, recorded as they were made. **For what the system
+is and does today, read `docs/APP-OVERVIEW.md`**; this file is the record of
+*why*. Where a decision here has since been changed, the section says
+**Superseded** and names the date and the replacement, and the original text
+is kept so the reasoning isn't lost. Decisions made after the first build are in
+"Decisions since the first build" at the end.
 
 ## What this product is
 
-A white-label conference companion platform: an admin web dashboard
-(this repo) plus a mobile app (separate project, not started) sold to
-conference organizers. Each client gets their own branded experience.
+A conference companion: an admin web dashboard (this repo) and an attendee
+mobile app (`conference-app-mobile`, built) sharing one Supabase backend.
+
+**Superseded (2026-09-18): white-label.** It was originally planned as a
+white-label platform sold to many organizers, each with their own branded app.
+That was dropped: the product is built for **one paying client first**, one
+event at a time. Do not add multi-client scaffolding. (The multi-organizer
+direction now planned is a different product, a separate project; see the end
+of this file.)
 
 ## MVP feature scope (mobile app)
 
-- Schedule browsing — static/baked-in for the event (no live mid-event
-  updates needed; content locks before the conference)
-- Personal bookmarks — synced per user via account login
+- Schedule browsing — **Superseded:** originally static/baked-in. The
+  schedule is now admin-managed content read live from the database:
+  organizers create, edit and delete sessions and choose their speakers,
+  and changes appear on the phone without a rebuild. Session times are
+  typed and shown in the event's time zone.
+- Personal bookmarks — synced per user via account login, with a
+  double-booking check (bookmarking a session that overlaps a saved one
+  asks whether to switch)
 - Sponsor directory — grouped by tier (Diamond/Platinum/Gold/Silver/
   Bronze/A la Carte)
 - Speaker list — public, speakers have already consented to being
-  listed
+  listed; each may have a photo, bio, a website and social links (https
+  only, validated per platform)
+- More Info — an admin-authored menu of pages (text or Q&A) and shortcuts
+  to existing screens, plus a Location block with a map link
 - Personal contacts — attendees can save another person's contact
   info (name, and whatever they choose to add) as they meet people at
   the event, as an in-app personal address book. This is user-entered
-  data, private to the attendee who saved it — **not** a shared or
-  public attendee directory. There is no listing of attendees
+  data, private to the attendee who saved it, **at most 10 per person per
+  event** — **not** a shared or public attendee directory. There is no listing of attendees
   anywhere in the app. Explicitly NOT live messaging or AI-driven
   matching — those were scoped out as too complex for v1
 
@@ -108,37 +124,30 @@ Sequential, no branching:
 - A slug collision with an existing one should get `-2`, `-3`, etc.
   appended — same as WordPress resolves a duplicate post slug.
 
-## White-label mobile distribution
+## White-label mobile distribution — Superseded (2026-09-18)
 
-- **Every client gets their own separately-branded, separately
-  App-Store/Play-Store-listed app** (own name, own icon) — not one
-  shared multi-tenant app with in-app branding. This was a deliberate
-  choice after weighing the alternative (one shared app, lower
-  ongoing cost, but a weaker sales pitch since it doesn't read as
-  "your own app").
-- All client apps are published under the **platform operator's own**
-  single Apple Developer + Google Play accounts — clients never need
-  their own developer accounts or touch App Store Connect.
-- Mobile app framework: **React Native + Expo**, chosen specifically
-  because EAS Build/EAS Submit is the most mature tooling for "one
-  codebase, many differently-branded, separately-published apps" —
-  this was the deciding factor over Flutter or native, not general
-  framework preference.
-- Each client's build is driven by its own config: app name, bundle
-  ID, icon, theme colors, and which backend tenant/event it points at.
-- An *update* to an already-approved app clears store review much
-  faster than a brand-new submission — the ongoing per-client rebuild
-  cost is real but smaller than the first-time cost, and is meant to
-  be handled by scripted/automated pipeline runs, not manual
-  per-client work.
+The original decision was that every client would get their own
+separately-branded, separately store-listed app, all published under the
+platform operator's own Apple and Google accounts, built with React Native +
+Expo and EAS Build/Submit (chosen because that tooling is the most mature for
+"one codebase, many differently-branded apps").
+
+**What replaced it:** one app, one client. The mobile app is tied to one event
+through `EXPO_PUBLIC_EVENT_ID`; the white-label scaffolding was removed. Kept
+from the original decision: React Native + Expo, and publishing under the
+operator's own developer accounts. An update to an approved app still clears
+store review faster than a new submission.
 
 ## Theme / branding
 
-- Each event holds its own branding: logo, primary color, background
-  color, text color. Editable from the admin dashboard (the actual
-  editor UI was never built in the first iteration). Read by the
-  mobile app's build config for anything that requires a rebuild to
-  change, and at runtime for anything that doesn't.
+- The one customizable value today is the event's **accent color**
+  (`events.primary_color`), chosen in the admin's Event details tab and applied
+  across the mobile app at runtime, with no rebuild. Everything else in the
+  design system (two fixed surfaces, constant chrome, typography) is fixed.
+- **Superseded:** the original plan for a full theme editor (logo, primary,
+  background and text colors) was not built and is deferred. The
+  `background_color` and `text_color` columns exist but are unused. Colors are
+  expected to be redesigned later.
 
 ## Data visibility / security model
 
@@ -182,7 +191,35 @@ Sequential, no branching:
   transactional email provider (Resend/SendGrid/Postmark/SES or
   similar) before real attendees rely on email verification working
   reliably.
-- **Staging first, promoted to production deliberately** — migrations
-  and changes land against a staging Supabase project before touching
-  production, same pattern already used for the WAS-CROS evaluator
-  app.
+- **Staging first, promoted to production deliberately** — the intent
+  stands, but **no staging project exists yet**: the single Supabase project
+  is production, and migrations are applied to it by hand (pasted into the SQL
+  editor, in order, never editing an applied one).
+
+## Decisions since the first build
+
+- **2026-09-18 — one client, not white-label.** See above.
+- **Speaker links:** https only; each platform's link is checked against that
+  platform's own host and username rules and stored in one canonical form; any
+  link that doesn't pass is rejected on save and not opened by the phone.
+  Skool was removed.
+- **More Info (formerly "My Event"):** a menu of rows, each opening a text page,
+  a Q&A page (numbered pairs on alternating bands, not an accordion), or an
+  existing screen (Speakers, Schedule, Sponsors, Contacts). Home is left out of
+  the shortcuts. Icons come from a fixed catalogue of about 110, chosen in a
+  visual picker, drawn as line icons on the phone.
+- **Text format:** a small strict subset of HTML instead of Markdown (a, h1–h6,
+  p, ol, li, strong/b, em/i, br), typed into an ordinary text box and filtered
+  when saved; anything else is rejected with a plain-English message. `mailto:`
+  and `tel:` links are allowed (the email subject is the event name); web links
+  are https only.
+- **Attendees directory with a contact-card QR code:** deferred, not in this
+  release; it would need a privacy model.
+- **Event time zone (2026-09-20):** every event has an IANA time zone; session
+  times are typed and shown in it, on the phone too.
+- **Multi-organizer festival guide (2026-09-20):** a separate product, cloned
+  from these repositories into its own Supabase, Vercel and GitHub projects,
+  with a festival level above events, public organizer pages, person and
+  session types, signed-out browsing and a color per organizer. Only the
+  platform owner adds and edits content. Its decisions are recorded in Part 12
+  of `docs/APP-OVERVIEW.md`. Nothing here changes for the conference app.
