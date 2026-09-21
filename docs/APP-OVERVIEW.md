@@ -197,7 +197,7 @@ Speaker links are validated **per platform** (Instagram, Facebook, YouTube, TikT
 
 **Deliberately deferred:** an **Attendees directory with a contact-card QR code** (reverses the "no attendee listing" decision, needs a privacy model); billing; a theme editor; real role permissions; multi-client white-label.
 
-**Known gaps:** personal-contact cap enforced only in the app; `PRODUCT-DECISIONS.md` is out of date (it still describes white-label distribution, "one organization", "static schedule", "no attendee listing", and lists the mobile app as "not started"); sessions saved before the time zone change were read as UTC and should be re-checked and re-saved.
+**Known gaps:** personal-contact cap enforced only in the app; sessions saved before the time zone change were read as UTC and should be re-checked and re-saved.
 
 **Agreed order of remaining work:** finish remaining fixes → **security** review → **compliance** (privacy policy, store data-safety declarations; account deletion already exists) → **publishing** (blocked on: whose Apple/Google developer accounts publish the app, the client's brand assets, and running `eas init`; EAS CLI is not installed yet).
 
