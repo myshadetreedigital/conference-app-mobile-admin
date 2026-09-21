@@ -54,7 +54,7 @@ A **conference companion product** made of two applications that share one Supab
 
 ## 4. Data model (Supabase / Postgres)
 
-Migrations `0000`–`0020` live in `supabase/migrations/` of the admin repo. **The admin repo owns the schema.** Migrations are applied **by hand** by pasting SQL into the Supabase SQL editor, in order; applied migrations are never edited. `0000`–`0020` are applied to the live project (`0005` no longer exists; see Part 4).
+Migrations `0000`–`0021` live in `supabase/migrations/` of the admin repo. **The admin repo owns the schema.** Migrations are applied **by hand** by pasting SQL into the Supabase SQL editor, in order; applied migrations are never edited. `0000`–`0020` are applied to the live project (`0005` no longer exists; see Part 4); `0021` (event time zone) is committed and **must be applied by hand before the admin and phone changes that use it are deployed**.
 
 ### Tables
 
@@ -63,7 +63,7 @@ Migrations `0000`–`0020` live in `supabase/migrations/` of the admin repo. **T
 | `profiles` | `id` = auth user id; `first_name`, `last_name`. Created by a trigger on signup from user metadata. |
 | `organizations` | `name`, `phone`, `email`, `address`, `flagged_duplicate_of`, `created_by`. Duplicate detection: 2 of {name, phone, email} matching an existing organization flags it (never blocks). |
 | `admin_memberships` | `organization_id`, `user_id`, `role` (`owner`/`admin`/`editor`); unique per pair; one membership per user (one org per admin). |
-| `events` | `organization_id`, `name`, `slug` (unique, auto-derived from the name), `status`, `logo_url`, `primary_color`, `background_color`/`text_color` (present, unused), `tagline`, `description`, `location` (text address), `starts_at`/`ends_at` (**dates only**), `banner_1_image_url`/`banner_1_link_url`/`banner_2_*` (two-slot Home banner), `location_image_url`. Partial unique index `events_one_live_per_org`. |
+| `events` | `organization_id`, `name`, `slug` (unique, auto-derived from the name), `status`, `logo_url`, `primary_color`, `background_color`/`text_color` (present, unused), `tagline`, `description`, `location` (text address), `starts_at`/`ends_at` (**dates only**), `banner_1_image_url`/`banner_1_link_url`/`banner_2_*` (two-slot Home banner), `location_image_url`, `time_zone` (IANA name, default `America/New_York`; the clock session times are typed and shown in). Partial unique index `events_one_live_per_org`. |
 | `speakers` | `event_id`, `name`, `title`, `bio`, `photo_url`, `featured`, and link columns `website_url`, `instagram`, `facebook`, `youtube`, `tiktok`, `linkedin`, `patreon`, `twitch`, `discord`. A CHECK requires each link to be null or `https://…` (added `NOT VALID`, so it applies to new writes). |
 | `sponsors` | `event_id`, `name`, `tier` (CHECK), `logo_url`, `website_url` (https CHECK). |
 | `sessions` | `event_id`, `title`, `description`, `starts_at`/`ends_at` (timestamptz), `location`. |
@@ -102,7 +102,7 @@ One public bucket, `event-media`, for speaker photos, sponsor logos, event logo/
 **Event editor** (`/events/[eventId]`) — five tabs, chosen by `?tab=`:
 
 1. **Event details** — logo, accent color picker, tagline, start/end dates, location/address (+ a hint that tapping it opens Maps), **location image** upload, "about" excerpt, and the two Home-screen **banner** slots (image + optional link each).
-2. **Sessions** — create, **edit** and delete, and choose which speakers present each session (checkboxes on both forms; only speakers of the same event are accepted). Times are read in the server's time zone, not the event's (see Part 11).
+2. **Sessions** — create, **edit** and delete, and choose which speakers present each session (checkboxes on both forms; only speakers of the same event are accepted). Times are typed and shown in the event's time zone (set on Event details).
 3. **Speakers** — create/edit/delete with photo, title, bio, featured checkbox, and links to a website + 8 social platforms.
 4. **Sponsors** — create/edit/delete with tier, logo and **website** (same https rules as a speaker's website).
 5. **More Info** — the menu rows (see Part 8).
@@ -197,7 +197,7 @@ Speaker links are validated **per platform** (Instagram, Facebook, YouTube, TikT
 
 **Deliberately deferred:** an **Attendees directory with a contact-card QR code** (reverses the "no attendee listing" decision, needs a privacy model); billing; a theme editor; real role permissions; multi-client white-label.
 
-**Known gaps:** **session times have no time zone handling** (the admin reads a typed time in the server's zone, the phone shows it in the phone's zone, so a 9:00 AM session can show at the wrong hour; fix = a time zone on each event); personal-contact cap enforced only in the app; `PRODUCT-DECISIONS.md` is out of date (it still describes white-label distribution, "one organization", "static schedule", "no attendee listing", and lists the mobile app as "not started").
+**Known gaps:** personal-contact cap enforced only in the app; `PRODUCT-DECISIONS.md` is out of date (it still describes white-label distribution, "one organization", "static schedule", "no attendee listing", and lists the mobile app as "not started"); sessions saved before the time zone change were read as UTC and should be re-checked and re-saved.
 
 **Agreed order of remaining work:** finish remaining fixes → **security** review → **compliance** (privacy policy, store data-safety declarations; account deletion already exists) → **publishing** (blocked on: whose Apple/Google developer accounts publish the app, the client's brand assets, and running `eas init`; EAS CLI is not installed yet).
 
