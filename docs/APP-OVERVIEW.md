@@ -54,7 +54,7 @@ A **conference companion product** made of two applications that share one Supab
 
 ## 4. Data model (Supabase / Postgres)
 
-Migrations `0000`–`0020` live in `supabase/migrations/` of the admin repo. **The admin repo owns the schema.** Migrations are applied **by hand** by pasting SQL into the Supabase SQL editor, in order; applied migrations are never edited. `0000`–`0019` are applied to the live project and were verified; `0020` is committed and applying it was not confirmed at the time of writing.
+Migrations `0000`–`0020` live in `supabase/migrations/` of the admin repo. **The admin repo owns the schema.** Migrations are applied **by hand** by pasting SQL into the Supabase SQL editor, in order; applied migrations are never edited. `0000`–`0020` are applied to the live project (`0005` no longer exists; see Part 4).
 
 ### Tables
 
@@ -102,9 +102,9 @@ One public bucket, `event-media`, for speaker photos, sponsor logos, event logo/
 **Event editor** (`/events/[eventId]`) — five tabs, chosen by `?tab=`:
 
 1. **Event details** — logo, accent color picker, tagline, start/end dates, location/address (+ a hint that tapping it opens Maps), **location image** upload, "about" excerpt, and the two Home-screen **banner** slots (image + optional link each).
-2. **Sessions** — create and delete. *(No editing, and no UI for linking speakers to sessions — `session_speakers` is only populated from seed data. The mobile schedule detail does display linked speakers.)*
+2. **Sessions** — create, **edit** and delete, and choose which speakers present each session (checkboxes on both forms; only speakers of the same event are accepted). Times are read in the server's time zone, not the event's (see Part 11).
 3. **Speakers** — create/edit/delete with photo, title, bio, featured checkbox, and links to a website + 8 social platforms.
-4. **Sponsors** — create/edit/delete with tier and logo. *(The website URL column exists and the mobile app shows it, but the admin form has no field for it.)*
+4. **Sponsors** — create/edit/delete with tier, logo and **website** (same https rules as a speaker's website).
 5. **More Info** — the menu rows (see Part 8).
 
 **Architecture rules** (`docs/ARCHITECTURE.md`, non-negotiable): `Route/Server Action → Service → Repository (interface) → Supabase`. Server actions never call Supabase directly. Every repository has a real Supabase implementation and an in-memory fake. Every input is validated by one Zod schema next to its service, and failures are structured results, not thrown exceptions. Data integrity and access control live in the database; workflow logic lives in services. Verification bar: `npm run typecheck`, `npm run lint`, `npm run test` all pass. About 765 tests, including browser-style component tests (jsdom) for the interactive forms.
@@ -127,7 +127,7 @@ One public bucket, `event-media`, for speaker photos, sponsor logos, event logo/
 | **Schedule** | Session list with a "my schedule only" filter and a +/− bookmark button. **Double-booking check:** bookmarking a session that overlaps an already-bookmarked one asks whether to switch. Detail page shows the session, its linked speakers, and "Add to schedule". Shared state lives in `ScheduleProvider` so all screens agree. |
 | **Speakers** | List with a **Featured** filter; detail shows photo, "Featured" badge, name, title, bio, and a row of **icon buttons** for the website and social profiles. |
 | **Sponsors** | Sections grouped by tier (sticky headers) with a filter-by-tier sheet; detail shows logo, tier, and website link. |
-| **Contacts** | Private address book: add/edit/delete; up to 10; "N of 10" counter. *(An open question: the counter counts loaded records, and on one device a third card wasn't visible — probably below the fold; unresolved.)* |
+| **Contacts** | Private address book: add/edit/delete; up to 10; the counter reads "N of 10 contacts saved". |
 | **More Info** | Admin-authored menu of rows with **line icons**. A row opens its own page (text or Q&A) or jumps to Speakers/Schedule/Sponsors/Contacts. Below the rows: the **Location block** (venue address + admin image; tap opens Apple Maps on iOS, Google Maps elsewhere) and the account section (**Sign out**, **Delete account** with confirmation). |
 
 **Data access pattern:** screens query Supabase directly through a small hook, `useSupabaseQuery`, which handles loading/error/refetch and the expired-session sign-out. Every content query is filtered by `EVENT_ID`.
@@ -197,7 +197,7 @@ Speaker links are validated **per platform** (Instagram, Facebook, YouTube, TikT
 
 **Deliberately deferred:** an **Attendees directory with a contact-card QR code** (reverses the "no attendee listing" decision, needs a privacy model); billing; a theme editor; real role permissions; multi-client white-label.
 
-**Known gaps:** no admin UI to link speakers to sessions or to edit sessions; no sponsor website field in the admin form; personal-contact cap enforced only in the app; unresolved Contacts display question; `PRODUCT-DECISIONS.md` is out of date (it still describes white-label distribution, "one organization", "static schedule", "no attendee listing", and lists the mobile app as "not started").
+**Known gaps:** **session times have no time zone handling** (the admin reads a typed time in the server's zone, the phone shows it in the phone's zone, so a 9:00 AM session can show at the wrong hour; fix = a time zone on each event); personal-contact cap enforced only in the app; `PRODUCT-DECISIONS.md` is out of date (it still describes white-label distribution, "one organization", "static schedule", "no attendee listing", and lists the mobile app as "not started").
 
 **Agreed order of remaining work:** finish remaining fixes → **security** review → **compliance** (privacy policy, store data-safety declarations; account deletion already exists) → **publishing** (blocked on: whose Apple/Google developer accounts publish the app, the client's brand assets, and running `eas init`; EAS CLI is not installed yet).
 
