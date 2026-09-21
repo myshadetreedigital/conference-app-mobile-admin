@@ -35,6 +35,45 @@ describe("createSponsor", () => {
   });
 });
 
+describe("sponsor website", () => {
+  it.each([
+    ["", null],
+    ["   ", null],
+    ["acme.com", "https://acme.com/"],
+    ["https://acme.com/about", "https://acme.com/about"],
+  ])("createSponsor stores %j as %j", async (input, stored) => {
+    const repo = new InMemorySponsorRepository();
+    const result = await createSponsor(repo, "event-1", { name: "Acme", websiteUrl: input });
+    expect(result.status).toBe("created");
+    if (result.status === "created") expect(result.sponsor.websiteUrl).toBe(stored);
+  });
+
+  it.each(["http://acme.com", "javascript:alert(1)", "https://user:pw@acme.com", "https://192.168.0.1", "not a url"])(
+    "createSponsor rejects %j",
+    async (input) => {
+      const repo = new InMemorySponsorRepository();
+      const result = await createSponsor(repo, "event-1", { name: "Acme", websiteUrl: input });
+      expect(result.status).toBe("invalid");
+      expect(await repo.listByEvent("event-1")).toEqual([]);
+    },
+  );
+
+  it("updateSponsor saves, changes and clears the website, and rejects an unsafe one without saving", async () => {
+    const repo = new InMemorySponsorRepository();
+    const created = await createSponsor(repo, "event-1", { name: "Acme" });
+    if (created.status !== "created") throw new Error("setup");
+    const id = created.sponsor.id;
+    const websiteOf = async () => (await repo.listByEvent("event-1"))[0].websiteUrl;
+
+    expect((await updateSponsor(repo, id, { name: "Acme", websiteUrl: "acme.com" })).status).toBe("updated");
+    expect(await websiteOf()).toBe("https://acme.com/");
+    expect((await updateSponsor(repo, id, { name: "Acme", websiteUrl: "http://evil.com" })).status).toBe("invalid");
+    expect(await websiteOf()).toBe("https://acme.com/");
+    expect((await updateSponsor(repo, id, { name: "Acme", websiteUrl: "" })).status).toBe("updated");
+    expect(await websiteOf()).toBeNull();
+  });
+});
+
 describe("updateSponsor", () => {
   it("updates the sponsor's name and tier", async () => {
     const repo = new InMemorySponsorRepository();

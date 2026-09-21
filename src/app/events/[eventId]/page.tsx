@@ -12,6 +12,7 @@ import { SupabaseEventInfoSectionRepository } from "@/repositories/supabase-even
 import { SupabaseQaEntryRepository } from "@/repositories/supabase-qa-entry-repository";
 import { isScreenRowType, rowTypeLabel, rowTypeOf } from "@/lib/row-type";
 import { NewSectionForm, SectionEditForm } from "./section-forms";
+import { SessionFields } from "./session-fields";
 import type { Speaker } from "@/repositories/speaker-repository";
 import { SPEAKER_LINK_FIELDS } from "@/lib/speaker-links";
 import {
@@ -24,6 +25,7 @@ import {
   updateSponsorAction,
   deleteSponsorAction,
   createSessionAction,
+  updateSessionAction,
   deleteSessionAction,
   createEventInfoSectionAction,
   updateEventInfoSectionAction,
@@ -373,57 +375,55 @@ export default async function EventContentPage({
               <ul className="space-y-2">
                 {sessions.length === 0 && <li className="text-sm text-zinc-500">No sessions yet.</li>}
                 {sessions.map((session) => (
-                  <li key={session.id} className="flex items-center justify-between rounded border px-4 py-3">
-                    <div>
-                      <p className="font-medium">{session.title}</p>
-                      {formatSessionTime(session.startsAt, session.endsAt) && (
-                        <p className="text-xs text-zinc-500">
-                          {formatSessionTime(session.startsAt, session.endsAt)}
-                        </p>
-                      )}
-                      {session.location && <p className="text-xs text-zinc-500">{session.location}</p>}
+                  <li key={session.id} className="rounded border px-4 py-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium">{session.title}</p>
+                        {formatSessionTime(session.startsAt, session.endsAt) && (
+                          <p className="text-xs text-zinc-500">
+                            {formatSessionTime(session.startsAt, session.endsAt)}
+                          </p>
+                        )}
+                        {session.location && <p className="text-xs text-zinc-500">{session.location}</p>}
+                        {session.speakerIds.length > 0 && (
+                          <p className="text-xs text-zinc-500">
+                            {session.speakerIds
+                              .map((id) => speakers.find((speaker) => speaker.id === id)?.name)
+                              .filter(Boolean)
+                              .join(", ")}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <details className="relative">
+                          <summary className="cursor-pointer text-sm underline list-none">Edit</summary>
+                          <form
+                            action={updateSessionAction.bind(null, eventId)}
+                            className="mt-3 space-y-2 border-t pt-3"
+                          >
+                            <input type="hidden" name="sessionId" value={session.id} />
+                            <SessionFields idPrefix={`session-${session.id}`} session={session} speakers={speakers} />
+                            <button
+                              type="submit"
+                              className="rounded bg-black px-4 py-2 text-white hover:bg-zinc-800"
+                            >
+                              Save
+                            </button>
+                          </form>
+                        </details>
+                        <form action={deleteSessionAction.bind(null, eventId)}>
+                          <input type="hidden" name="sessionId" value={session.id} />
+                          <button type="submit" className="text-sm text-zinc-500 underline">
+                            Delete
+                          </button>
+                        </form>
+                      </div>
                     </div>
-                    <form action={deleteSessionAction.bind(null, eventId)}>
-                      <input type="hidden" name="sessionId" value={session.id} />
-                      <button type="submit" className="text-sm text-zinc-500 underline">
-                        Delete
-                      </button>
-                    </form>
                   </li>
                 ))}
               </ul>
               <form action={createSessionAction.bind(null, eventId)} className="space-y-2 border-t pt-4">
-                <input name="title" placeholder="Title" required className="w-full rounded border px-3 py-2" />
-                <div className="flex gap-2">
-                  <div className="flex-1 space-y-1">
-                    <label htmlFor="startsAt" className="text-xs font-medium text-zinc-500">
-                      Starts
-                    </label>
-                    <input
-                      id="startsAt"
-                      name="startsAt"
-                      type="datetime-local"
-                      className="w-full rounded border px-3 py-2"
-                    />
-                  </div>
-                  <div className="flex-1 space-y-1">
-                    <label htmlFor="endsAt" className="text-xs font-medium text-zinc-500">
-                      Ends
-                    </label>
-                    <input
-                      id="endsAt"
-                      name="endsAt"
-                      type="datetime-local"
-                      className="w-full rounded border px-3 py-2"
-                    />
-                  </div>
-                </div>
-                <input name="location" placeholder="Location (optional)" className="w-full rounded border px-3 py-2" />
-                <textarea
-                  name="description"
-                  placeholder="Description (optional)"
-                  className="w-full rounded border px-3 py-2"
-                />
+                <SessionFields idPrefix="new-session" speakers={speakers} />
                 <button type="submit" className="rounded bg-black px-4 py-2 text-white hover:bg-zinc-800">
                   Add session
                 </button>
@@ -591,6 +591,12 @@ export default async function EventContentPage({
                                 </option>
                               ))}
                             </select>
+                            <input
+                              name="websiteUrl"
+                              defaultValue={sponsor.websiteUrl ?? ""}
+                              placeholder="Website (optional), e.g. acme.com"
+                              className="w-full rounded border px-3 py-2"
+                            />
                             <div className="space-y-1">
                               <label className="text-xs font-medium text-zinc-500">
                                 Replace logo (optional)
@@ -627,6 +633,11 @@ export default async function EventContentPage({
                     ))}
                   </select>
                 </div>
+                <input
+                  name="websiteUrl"
+                  placeholder="Website (optional), e.g. acme.com"
+                  className="w-full rounded border px-3 py-2"
+                />
                 <div className="space-y-1">
                   <label htmlFor="sponsor-logo" className="text-xs font-medium text-zinc-500">
                     Logo (optional)

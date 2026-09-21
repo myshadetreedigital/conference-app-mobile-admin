@@ -14,7 +14,7 @@ export class InMemorySponsorRepository implements SponsorRepository {
   }
 
   async create(input: NewSponsor): Promise<Sponsor> {
-    const sponsor: Sponsor = { id: randomUUID(), websiteUrl: null, ...input };
+    const sponsor: Sponsor = { id: randomUUID(), ...input };
     this.byId.set(sponsor.id, sponsor);
     return sponsor;
   }
@@ -24,6 +24,7 @@ export class InMemorySponsorRepository implements SponsorRepository {
     if (!sponsor) throw new Error("Sponsor not found");
     sponsor.name = data.name;
     sponsor.tier = data.tier;
+    sponsor.websiteUrl = data.websiteUrl;
     if (data.logoUrl !== undefined) sponsor.logoUrl = data.logoUrl;
   }
 

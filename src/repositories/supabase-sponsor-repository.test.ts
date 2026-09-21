@@ -48,28 +48,40 @@ describe("SupabaseSponsorRepository", () => {
       name: "Acme",
       tier: "gold",
       logoUrl: "https://cdn.example.com/acme.png",
+      websiteUrl: "https://acme.example.com/",
     });
     expect(fake.only().arg("insert")).toEqual({
       event_id: "evt-1",
       name: "Acme",
       tier: "gold",
       logo_url: "https://cdn.example.com/acme.png",
+      website_url: "https://acme.example.com/",
     });
     expect(sponsor).toEqual(expected);
   });
 
   it("update omits logo_url unless a new logo is given", async () => {
     const keep = createFakeSupabase();
-    await new SupabaseSponsorRepository(keep.client).update("sp-1", { name: "N", tier: "silver" });
-    expect(keep.only().arg("update")).toEqual({ name: "N", tier: "silver" });
+    await new SupabaseSponsorRepository(keep.client).update("sp-1", {
+      name: "N",
+      tier: "silver",
+      websiteUrl: null,
+    });
+    expect(keep.only().arg("update")).toEqual({ name: "N", tier: "silver", website_url: null });
 
     const replace = createFakeSupabase();
     await new SupabaseSponsorRepository(replace.client).update("sp-1", {
       name: "N",
       tier: "silver",
+      websiteUrl: "https://acme.example.com/",
       logoUrl: "https://x/new.png",
     });
-    expect(replace.only().arg("update")).toEqual({ name: "N", tier: "silver", logo_url: "https://x/new.png" });
+    expect(replace.only().arg("update")).toEqual({
+      name: "N",
+      tier: "silver",
+      website_url: "https://acme.example.com/",
+      logo_url: "https://x/new.png",
+    });
     expect(replace.only().ops.find((o) => o.method === "eq")?.args).toEqual(["id", "sp-1"]);
   });
 
@@ -82,8 +94,8 @@ describe("SupabaseSponsorRepository", () => {
 
   it.each([
     ["listByEvent", (r: SupabaseSponsorRepository) => r.listByEvent("evt-1")],
-    ["create", (r: SupabaseSponsorRepository) => r.create({ eventId: "e", name: "n", tier: "gold", logoUrl: null })],
-    ["update", (r: SupabaseSponsorRepository) => r.update("sp-1", { name: "n", tier: "gold" })],
+    ["create", (r: SupabaseSponsorRepository) => r.create({ eventId: "e", name: "n", tier: "gold", logoUrl: null, websiteUrl: null })],
+    ["update", (r: SupabaseSponsorRepository) => r.update("sp-1", { name: "n", tier: "gold", websiteUrl: null })],
     ["delete", (r: SupabaseSponsorRepository) => r.delete("sp-1")],
   ])("%s throws the Supabase error", async (_name, run) => {
     const error = { message: "boom" };

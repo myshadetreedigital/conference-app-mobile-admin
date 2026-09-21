@@ -1,11 +1,29 @@
 import { z } from "zod";
+import { normalizeSpeakerLink } from "@/lib/speaker-links";
 import type { Sponsor, SponsorRepository } from "@/repositories/sponsor-repository";
 
 const TIERS = ["diamond", "platinum", "gold", "silver", "bronze", "a_la_carte"] as const;
 
+// Blank becomes null; anything else must be a safe https website and is stored
+// in canonical form (the same rules as a speaker's website).
+const websiteField = z
+  .string()
+  .trim()
+  .nullable()
+  .optional()
+  .transform((value, ctx): string | null => {
+    const result = normalizeSpeakerLink("websiteUrl", value);
+    if (!result.ok) {
+      ctx.addIssue({ code: "custom", message: result.error });
+      return z.NEVER;
+    }
+    return result.value;
+  });
+
 export const createSponsorSchema = z.object({
   name: z.string().trim().min(1, "Name is required"),
   tier: z.enum(TIERS).default("a_la_carte"),
+  websiteUrl: websiteField,
   // Already a Storage public URL by the time it reaches here — same
   // reasoning as speaker-service's photoUrl.
   logoUrl: z
@@ -38,6 +56,7 @@ export async function createSponsor(
 export const updateSponsorSchema = z.object({
   name: z.string().trim().min(1, "Name is required"),
   tier: z.enum(TIERS).default("a_la_carte"),
+  websiteUrl: websiteField,
 });
 
 export type UpdateSponsorInput = z.input<typeof updateSponsorSchema>;

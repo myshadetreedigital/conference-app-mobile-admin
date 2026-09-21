@@ -45,7 +45,7 @@ export class SupabaseSponsorRepository implements SponsorRepository {
   async create(input: NewSponsor): Promise<Sponsor> {
     const { data, error } = await this.supabase
       .from("sponsors")
-      .insert({ event_id: input.eventId, name: input.name, tier: input.tier, logo_url: input.logoUrl })
+      .insert({ event_id: input.eventId, name: input.name, tier: input.tier, logo_url: input.logoUrl, website_url: input.websiteUrl })
       .select()
       .single();
     if (error) throw error;
@@ -53,7 +53,7 @@ export class SupabaseSponsorRepository implements SponsorRepository {
   }
 
   async update(sponsorId: string, data: UpdateSponsorData): Promise<void> {
-    const patch: Record<string, unknown> = { name: data.name, tier: data.tier };
+    const patch: Record<string, unknown> = { name: data.name, tier: data.tier, website_url: data.websiteUrl };
     if (data.logoUrl !== undefined) patch.logo_url = data.logoUrl;
     const { error } = await this.supabase.from("sponsors").update(patch).eq("id", sponsorId);
     if (error) throw error;

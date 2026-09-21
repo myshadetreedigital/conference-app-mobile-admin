@@ -17,7 +17,7 @@ import {
   deleteSpeaker,
 } from "@/services/speaker-service";
 import { createSponsor, updateSponsor, deleteSponsor } from "@/services/sponsor-service";
-import { createSession, deleteSession } from "@/services/session-service";
+import { createSession, deleteSession, updateSession } from "@/services/session-service";
 import {
   createEventInfoSection,
   createEventInfoSectionSchema,
@@ -169,6 +169,30 @@ export async function deleteSpeakerAction(eventId: string, formData: FormData) {
   redirect(`/events/${eventId}?tab=speakers`);
 }
 
+/** Sends the admin back to a tab with the first validation message in the URL (`?error=`). */
+function redirectWithFirstError(eventId: string, tab: string, errors: object): never {
+  const firstError = Object.values(errors)
+    .flatMap((v) => (v && typeof v === "object" && "_errors" in v ? (v as { _errors: string[] })._errors : []))
+    .find(Boolean);
+  redirect(`/events/${eventId}?tab=${tab}&error=${encodeURIComponent(firstError ?? "Please check your input.")}`);
+}
+
+function readSessionForm(formData: FormData) {
+  return {
+    title: String(formData.get("title") ?? ""),
+    description: String(formData.get("description") ?? ""),
+    location: String(formData.get("location") ?? ""),
+    startsAt: String(formData.get("startsAt") ?? ""),
+    endsAt: String(formData.get("endsAt") ?? ""),
+    speakerIds: formData.getAll("speakerIds").map(String),
+  };
+}
+
+/** Every speaker id of the event: the only speakers a session in it may link. */
+async function speakerIdsOf(supabase: Awaited<ReturnType<typeof createClient>>, eventId: string) {
+  return (await new SupabaseSpeakerRepository(supabase).listByEvent(eventId)).map((speaker) => speaker.id);
+}
+
 export async function createSponsorAction(eventId: string, formData: FormData) {
   await requireUser();
   const supabase = await createClient();
@@ -179,11 +203,13 @@ export async function createSponsorAction(eventId: string, formData: FormData) {
     formData.get("logo") as File | null,
     "sponsors",
   );
-  await createSponsor(repo, eventId, {
+  const result = await createSponsor(repo, eventId, {
     name: String(formData.get("name") ?? ""),
     tier: String(formData.get("tier") ?? "a_la_carte") as SponsorTier,
+    websiteUrl: String(formData.get("websiteUrl") ?? ""),
     logoUrl,
   });
+  if (result.status === "invalid") redirectWithFirstError(eventId, "sponsors", result.errors);
   redirect(`/events/${eventId}?tab=sponsors`);
 }
 
@@ -196,15 +222,17 @@ export async function updateSponsorAction(eventId: string, formData: FormData) {
   const newLogoUrl = newLogo && newLogo.size > 0
     ? await uploadEventMedia(supabase, eventId, newLogo, "sponsors")
     : undefined;
-  await updateSponsor(
+  const result = await updateSponsor(
     repo,
     sponsorId,
     {
       name: String(formData.get("name") ?? ""),
       tier: String(formData.get("tier") ?? "a_la_carte") as SponsorTier,
+      websiteUrl: String(formData.get("websiteUrl") ?? ""),
     },
     newLogoUrl,
   );
+  if (result.status === "invalid") redirectWithFirstError(eventId, "sponsors", result.errors);
   redirect(`/events/${eventId}?tab=sponsors`);
 }
 
@@ -220,22 +248,25 @@ export async function createSessionAction(eventId: string, formData: FormData) {
   await requireUser();
   const supabase = await createClient();
   const repo = new SupabaseSessionRepository(supabase);
-  const result = await createSession(repo, eventId, {
-    title: String(formData.get("title") ?? ""),
-    description: String(formData.get("description") ?? ""),
-    location: String(formData.get("location") ?? ""),
-    startsAt: String(formData.get("startsAt") ?? ""),
-    endsAt: String(formData.get("endsAt") ?? ""),
-  });
+  const eventSpeakerIds = await speakerIdsOf(supabase, eventId);
+  const result = await createSession(repo, eventId, readSessionForm(formData), eventSpeakerIds);
 
-  if (result.status === "invalid") {
-    const firstError = Object.values(result.errors)
-      .flatMap((v) => (v && "_errors" in v ? v._errors : []))
-      .find(Boolean);
-    redirect(
-      `/events/${eventId}?tab=sessions&error=${encodeURIComponent(firstError ?? "Please check your input.")}`,
-    );
-  }
+  if (result.status === "invalid") redirectWithFirstError(eventId, "sessions", result.errors);
+  redirect(`/events/${eventId}?tab=sessions`);
+}
+
+export async function updateSessionAction(eventId: string, formData: FormData) {
+  await requireUser();
+  const supabase = await createClient();
+  const repo = new SupabaseSessionRepository(supabase);
+  const eventSpeakerIds = await speakerIdsOf(supabase, eventId);
+  const result = await updateSession(
+    repo,
+    String(formData.get("sessionId") ?? ""),
+    readSessionForm(formData),
+    eventSpeakerIds,
+  );
+  if (result.status === "invalid") redirectWithFirstError(eventId, "sessions", result.errors);
   redirect(`/events/${eventId}?tab=sessions`);
 }
 
