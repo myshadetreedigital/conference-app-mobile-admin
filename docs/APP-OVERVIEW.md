@@ -83,7 +83,7 @@ One public bucket, `event-media`, for speaker photos, sponsor logos, event logo/
 - **Own-only** on `profiles`, `bookmarks`, `personal_contacts`, and `admin_memberships`/`organizations` for members.
 - `find_possible_duplicate_org(...)` — narrow `security definer` function used during onboarding; returns only a candidate id.
 - Triggers: create a profile on signup; create the owner membership when an organization is created. (The organization insert deliberately does **not** use `RETURNING`, because the select policy depends on the membership the trigger creates — see the comment in `supabase-organization-repository.ts`.)
-- `0005_debug_whoami.sql` creates a temporary diagnostic function that its own comment says should be deleted once an old investigation was resolved; the migration is still in the folder, and whether the function still exists in the live database was not checked.
+- The temporary `debug_whoami()` diagnostic function (old migration `0005`) was dropped from the live database on 2026-09-20 and its migration file deleted. Migration numbering therefore skips `0005`; a fresh database simply never creates it.
 
 ### Server-side pieces
 - **Edge Function `delete-account`** (Supabase, Deno) — deletes the caller's own auth user using the service-role key, which never leaves the server. Required by Apple guideline 5.1.1(v) and Google Play policy. Everything else cascades from the auth user.
@@ -197,7 +197,7 @@ Speaker links are validated **per platform** (Instagram, Facebook, YouTube, TikT
 
 **Deliberately deferred:** an **Attendees directory with a contact-card QR code** (reverses the "no attendee listing" decision, needs a privacy model); billing; a theme editor; real role permissions; multi-client white-label.
 
-**Known gaps:** no admin UI to link speakers to sessions or to edit sessions; no sponsor website field in the admin form; personal-contact cap enforced only in the app; unresolved Contacts display question; the `0005_debug_whoami` leftover; `PRODUCT-DECISIONS.md` is out of date (it still describes white-label distribution, "one organization", "static schedule", "no attendee listing", and lists the mobile app as "not started").
+**Known gaps:** no admin UI to link speakers to sessions or to edit sessions; no sponsor website field in the admin form; personal-contact cap enforced only in the app; unresolved Contacts display question; `PRODUCT-DECISIONS.md` is out of date (it still describes white-label distribution, "one organization", "static schedule", "no attendee listing", and lists the mobile app as "not started").
 
 **Agreed order of remaining work:** finish remaining fixes → **security** review → **compliance** (privacy policy, store data-safety declarations; account deletion already exists) → **publishing** (blocked on: whose Apple/Google developer accounts publish the app, the client's brand assets, and running `eas init`; EAS CLI is not installed yet).
 
